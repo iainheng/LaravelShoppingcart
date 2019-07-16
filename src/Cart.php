@@ -142,17 +142,17 @@ class Cart
             $item->setTaxRate($this->taxRate);
         }
 
-        $content = $this->getContent();
+        $items = $this->getItems();
 
-        if ($content->has($item->rowId)) {
-            $item->qty += $content->get($item->rowId)->qty;
+        if ($items->has($item->rowId)) {
+            $item->qty += $items->get($item->rowId)->qty;
         }
 
-        $content->put($item->rowId, $item);
+        $items->put($item->rowId, $item);
 
         $this->events->dispatch('cart.added', $item);
 
-        $this->session->put($this->instance, $content);
+        $this->session->put($this->instance, $this->getContent()->put('items', $items));
 
         return $item;
     }
@@ -177,12 +177,12 @@ class Cart
             $cartItem->qty = $qty;
         }
 
-        $content = $this->getContent();
+        $items = $this->getItems();
 
         if ($rowId !== $cartItem->rowId) {
-            $content->pull($rowId);
+            $items->pull($rowId);
 
-            if ($content->has($cartItem->rowId)) {
+            if ($items->has($cartItem->rowId)) {
                 $existingCartItem = $this->get($cartItem->rowId);
                 $cartItem->setQuantity($existingCartItem->qty + $cartItem->qty);
             }
@@ -193,12 +193,12 @@ class Cart
 
             return;
         } else {
-            $content->put($cartItem->rowId, $cartItem);
+            $items->put($cartItem->rowId, $cartItem);
         }
 
         $this->events->dispatch('cart.updated', $cartItem);
 
-        $this->session->put($this->instance, $content);
+        $this->session->put($this->instance, $this->getContent()->put('items', $items));
 
         return $cartItem;
     }
@@ -214,13 +214,13 @@ class Cart
     {
         $cartItem = $this->get($rowId);
 
-        $content = $this->getContent();
+        $items = $this->getItems();
 
-        $content->pull($cartItem->rowId);
+        $items->pull($cartItem->rowId);
 
         $this->events->dispatch('cart.removed', $cartItem);
 
-        $this->session->put($this->instance, $content);
+        $this->session->put($this->instance, $this->getContent()->put('items', $items));
     }
 
     /**
@@ -232,13 +232,13 @@ class Cart
      */
     public function get($rowId)
     {
-        $content = $this->getContent();
+        $items = $this->getItems();
 
-        if (!$content->has($rowId)) {
+        if (!$items->has($rowId)) {
             throw new InvalidRowIDException("The cart does not contain rowId {$rowId}.");
         }
 
-        return $content->get($rowId);
+        return $items->get($rowId);
     }
 
     /**
@@ -266,13 +266,23 @@ class Cart
     }
 
     /**
+     * Get items of the cart
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function items()
+    {
+        return $this->getContent()->get('items');
+    }
+
+    /**
      * Get the number of items in the cart.
      *
      * @return int|float
      */
     public function count()
     {
-        return $this->getContent()->sum('qty');
+        return $this->getItems()->sum('qty');
     }
 
     /**
@@ -292,7 +302,7 @@ class Cart
      */
     public function totalFloat()
     {
-        return $this->getContent()->reduce(function ($total, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($total, CartItem $cartItem) {
             return $total + $cartItem->total;
         }, 0);
     }
@@ -318,7 +328,7 @@ class Cart
      */
     public function taxFloat()
     {
-        return $this->getContent()->reduce(function ($tax, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($tax, CartItem $cartItem) {
             return $tax + $cartItem->taxTotal;
         }, 0);
     }
@@ -344,7 +354,7 @@ class Cart
      */
     public function subtotalFloat()
     {
-        return $this->getContent()->reduce(function ($subTotal, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($subTotal, CartItem $cartItem) {
             return $subTotal + $cartItem->subtotal;
         }, 0);
     }
@@ -370,7 +380,7 @@ class Cart
      */
     public function discountFloat()
     {
-        return $this->getContent()->reduce(function ($discount, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($discount, CartItem $cartItem) {
             return $discount + $cartItem->discountTotal;
         }, 0);
     }
@@ -396,7 +406,7 @@ class Cart
      */
     public function initialFloat()
     {
-        return $this->getContent()->reduce(function ($initial, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($initial, CartItem $cartItem) {
             return $initial + ($cartItem->qty * $cartItem->price);
         }, 0);
     }
@@ -422,7 +432,7 @@ class Cart
      */
     public function weightFloat()
     {
-        return $this->getContent()->reduce(function ($total, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($total, CartItem $cartItem) {
             return $total + ($cartItem->qty * $cartItem->weight);
         }, 0);
     }
@@ -450,7 +460,7 @@ class Cart
      */
     public function search(Closure $search)
     {
-        return $this->getContent()->filter($search);
+        return $this->getItems()->filter($search);
     }
 
     /**
@@ -471,11 +481,11 @@ class Cart
 
         $cartItem->associate($model);
 
-        $content = $this->getContent();
+        $items = $this->getItems();
 
-        $content->put($cartItem->rowId, $cartItem);
+        $items->put($cartItem->rowId, $cartItem);
 
-        $this->session->put($this->instance, $content);
+        $this->session->put($this->instance, $this->getContent()->put('items', $items));
     }
 
     /**
@@ -492,11 +502,11 @@ class Cart
 
         $cartItem->setTaxRate($taxRate);
 
-        $content = $this->getContent();
+        $items = $this->getItems();
 
-        $content->put($cartItem->rowId, $cartItem);
+        $items->put($cartItem->rowId, $cartItem);
 
-        $this->session->put($this->instance, $content);
+        $this->session->put($this->instance, $this->getContent()->put('items', $items));
     }
 
     /**
@@ -509,9 +519,9 @@ class Cart
     {
         $this->taxRate = $taxRate;
 
-        $content = $this->getContent();
-        if ($content && $content->count()) {
-            $content->each(function ($item, $key) {
+        $items = $this->getItems();
+        if ($items && $items->count()) {
+            $items->each(function ($item, $key) {
                 $item->setTaxRate($this->taxRate);
             });
         }
@@ -531,11 +541,11 @@ class Cart
 
         $cartItem->setDiscountRate($discount);
 
-        $content = $this->getContent();
+        $items = $this->getItems();
 
-        $content->put($cartItem->rowId, $cartItem);
+        $items->put($cartItem->rowId, $cartItem);
 
-        $this->session->put($this->instance, $content);
+        $this->session->put($this->instance, $this->getContent()->put('items', $items));
     }
 
     /**
@@ -550,9 +560,9 @@ class Cart
     {
         $this->discount = $discount;
 
-        $content = $this->getContent();
-        if ($content && $content->count()) {
-            $content->each(function ($item, $key) {
+        $items = $this->getItems();
+        if ($items && $items->count()) {
+            $items->each(function ($item, $key) {
                 $item->setDiscountRate($this->discount);
             });
         }
@@ -648,7 +658,7 @@ class Cart
 
         $storedContent = unserialize($stored->content);
 
-        foreach ($storedContent as $cartItem) {
+        foreach ($storedContent->get('items') as $cartItem) {
             $this->addCartItem($cartItem, $keepDiscount, $keepTax);
         }
 
@@ -685,6 +695,20 @@ class Cart
     {
         if ($this->session->has($this->instance)) {
             return $this->session->get($this->instance);
+        }
+
+        return new Collection();
+    }
+
+    /**
+     * Get carts items
+     *
+     * @return Collection
+     */
+    protected function getItems()
+    {
+        if ($this->session->has($this->instance)) {
+            return $this->session->get($this->instance . '.items');
         }
 
         return new Collection();
