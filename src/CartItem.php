@@ -3,9 +3,18 @@
 namespace Gloudemans\Shoppingcart;
 
 use Gloudemans\Shoppingcart\Contracts\Buyable;
+use Gloudemans\Shoppingcart\Contracts\Couponable;
+use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
+use Illuminate\Support\Arr;
 
+/**
+ * Class CartItem
+ *
+ * @package Gloudemans\Shoppingcart
+ * @property Couponable $coupon
+ */
 class CartItem implements Arrayable, Jsonable
 {
     /**
@@ -65,6 +74,11 @@ class CartItem implements Arrayable, Jsonable
     private $associatedModel = null;
 
     /**
+     * @var bool
+     */
+    public $taxIncluded = false;
+
+    /**
      * The tax rate for the cart item.
      *
      * @var int|float
@@ -77,6 +91,21 @@ class CartItem implements Arrayable, Jsonable
      * @var float
      */
     private $discountRate = 0;
+
+    /**
+     * @var bool
+     */
+    private $percentageDiscount = false;
+
+    /**
+     * @var bool
+     */
+    private $discountApplyOnce = false;
+
+    /**
+     * @var CartCoupon
+     */
+    private $coupon;
 
     /**
      * CartItem constructor.
@@ -97,7 +126,7 @@ class CartItem implements Arrayable, Jsonable
         if (strlen($price) < 0 || !is_numeric($price)) {
             throw new \InvalidArgumentException('Please supply a valid price.');
         }
-        if (strlen($price) < 0 || !is_numeric($weight)) {
+        if (strlen($weight) < 0 || !is_numeric($weight)) {
             throw new \InvalidArgumentException('Please supply a valid weight.');
         }
 
@@ -266,6 +295,35 @@ class CartItem implements Arrayable, Jsonable
     }
 
     /**
+     * Attach coupon to current item
+     *
+     * @param Couponable $coupon
+     */
+    public function setCoupon(Couponable $coupon)
+    {
+        $this->coupon = $coupon;
+    }
+
+    /**
+     * Unset coupon
+     */
+    public function forgetCoupon()
+    {
+        $this->coupon = null;
+    }
+
+    /**
+     * Remove discount and coupon attached
+     */
+    public function removeCoupon()
+    {
+        $this->discountAmount = 0;
+        $this->discountRate = 0;
+
+        $this->coupon = null;
+    }
+
+    /**
      * Update the cart item from a Buyable.
      *
      * @param \Gloudemans\Shoppingcart\Contracts\Buyable $item
@@ -289,13 +347,13 @@ class CartItem implements Arrayable, Jsonable
      */
     public function updateFromArray(array $attributes)
     {
-        $this->id = array_get($attributes, 'id', $this->id);
-        $this->qty = array_get($attributes, 'qty', $this->qty);
-        $this->name = array_get($attributes, 'name', $this->name);
-        $this->price = array_get($attributes, 'price', $this->price);
-        $this->weight = array_get($attributes, 'weight', $this->weight);
+        $this->id = Arr::get($attributes, 'id', $this->id);
+        $this->qty = Arr::get($attributes, 'qty', $this->qty);
+        $this->name = Arr::get($attributes, 'name', $this->name);
+        $this->price = Arr::get($attributes, 'price', $this->price);
+        $this->weight = Arr::get($attributes, 'weight', $this->weight);
         $this->priceTax = $this->price + $this->tax;
-        $this->options = new CartItemOptions(array_get($attributes, 'options', $this->options));
+        $this->options = new CartItemOptions(Arr::get($attributes, 'options', $this->options));
 
         $this->rowId = $this->generateRowId($this->id, $this->options->all());
     }
@@ -329,17 +387,31 @@ class CartItem implements Arrayable, Jsonable
     }
 
     /**
-     * Set the discount rate.
-     *
-     * @param int|float $discountRate
-     *
-     * @return \Gloudemans\Shoppingcart\CartItem
+     * @return float|int
      */
-    public function setDiscountRate($discountRate)
+    public function getTaxRate()
     {
-        $this->discountRate = $discountRate;
+        return $this->taxRate;
+    }
 
-        return $this;
+    /**
+     * Apply discount to item
+     *
+     * @param float $amount
+     * @param bool $percentageDiscount
+     * @param bool $applyOnce
+     * @throws CouponException
+     */
+    public function setDiscount($amount, $percentageDiscount = false, $applyOnce = false)
+    {
+        $this->percentageDiscount = $percentageDiscount;
+
+        if ($this->percentageDiscount && ($amount < 0 || $amount > 100))
+            throw new CouponException('Invalid value for a percentage discount. The value must be between 1 and 100.');
+
+        $this->discountApplyOnce = $applyOnce;
+
+        $this->discountRate = $amount;
     }
 
     /**
@@ -357,19 +429,24 @@ class CartItem implements Arrayable, Jsonable
 
         switch ($attribute) {
             case 'discount':
-                return $this->price * ($this->discountRate / 100);
+                return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : $this->discountRate;
             case 'priceTarget':
                 return $this->price - $this->discount;
             case 'subtotal':
                 return $this->priceTarget * $this->qty;
             case 'tax':
-                return $this->priceTarget * ($this->taxRate / 100);
+                return ($this->taxIncluded) ?
+                    calc_tax_amount($this->priceTarget, $this->taxRate, $this->taxIncluded) :
+                    $this->priceTarget * ($this->taxRate / 100);
             case 'priceTax':
-                return $this->priceTarget + $this->tax;
+                return ($this->taxIncluded) ? $this->priceTarget : $this->priceTarget + $this->tax;
             case 'total':
                 return $this->priceTax * $this->qty;
             case 'taxTotal':
+            case 'taxed':
                 return $this->tax * $this->qty;
+            case 'taxable':
+                return ($this->taxIncluded) ? $this->total - $this->taxTotal : $this->subtotal;
             case 'discountTotal':
                 return $this->discount * $this->qty;
             case 'weightTotal':
@@ -384,7 +461,8 @@ class CartItem implements Arrayable, Jsonable
                 if (isset($this->associatedModel)) {
                     return $this->associatedModel;
                 }
-
+            case 'coupon':
+                return ($this->coupon) ? $this->coupon : null;
             default:
                 return;
         }
@@ -412,7 +490,7 @@ class CartItem implements Arrayable, Jsonable
      */
     public static function fromArray(array $attributes)
     {
-        $options = array_get($attributes, 'options', []);
+        $options = Arr::get($attributes, 'options', []);
 
         return new self($attributes['id'], $attributes['name'], $attributes['price'], $attributes['weight'], $options);
     }
@@ -465,6 +543,7 @@ class CartItem implements Arrayable, Jsonable
             'discount' => $this->discount,
             'tax'      => $this->tax,
             'subtotal' => $this->subtotal,
+            'coupon'   => optional($this->coupon)->toArray()
         ];
     }
 
