@@ -431,7 +431,7 @@ class CartItem implements Arrayable, Jsonable
             case 'discount':
                 return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : $this->discountRate;
             case 'priceTarget':
-                return $this->price - $this->discount;
+                return max($this->price - $this->discount, 0);
             case 'subtotal':
                 return $this->priceTarget * $this->qty;
             case 'tax':
