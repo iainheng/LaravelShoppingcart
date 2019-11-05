@@ -176,7 +176,7 @@ trait CouponTrait
         }
 
         if ($this->dateFrom && Carbon::now()->lessThan($this->dateFrom)) {
-            throw new CouponException(ucfirst(config('cart.discount.coupon_label')) . ' is not activated yet and will be effective after ' . $this->dateFrom->format(config('cart.date_format')));
+            throw new CouponException(ucfirst(config('cart.discount.coupon_label')) . ' is not activated yet and will be effective on ' . $this->dateFrom->format(config('cart.date_format')));
         }
 
         return true;
