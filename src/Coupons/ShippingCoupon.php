@@ -65,7 +65,7 @@ class ShippingCoupon extends CartCoupon
             throw new CouponException('Your cart shipping cost exceeded ' . config('cart.discount.coupon_label') . ' limit.');
         }
 
-        $discountableCountryIds = $this->discountable->getDiscountableIdentifiers();
+        $discountableCountryIds = $this->discountable->getDiscountableIdentifiers($cart);
 
         // if restrict shipping discount to certain countries
         if ($discountableCountryIds->isNotEmpty()) {
@@ -76,7 +76,7 @@ class ShippingCoupon extends CartCoupon
             }
 
             if (!in_array($shippingCountryId, $discountableCountryIds->all())) {
-                throw new CouponException(ucfirst(config('cart.discount.coupon_label')). ' can only be used on shipping address from ' . $this->discountable->getDiscountableDescription());
+                throw new CouponException(ucfirst(config('cart.discount.coupon_label')). ' can only be used on shipping address from ' . $this->discountable->getDiscountableDescription($cart));
             }
         }
 
@@ -116,7 +116,7 @@ class ShippingCoupon extends CartCoupon
      */
     public function getDescription(Cart $cart = null, $options = [])
     {
-        $discountableDescription = $this->discountable->getDiscountableDescription();
+        $discountableDescription = $this->discountable->getDiscountableDescription($cart);
 
         return 'Free shipping'. (!empty($discountableDescription) ? ' to ' . $discountableDescription : '');
     }

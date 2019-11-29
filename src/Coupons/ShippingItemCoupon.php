@@ -167,14 +167,14 @@ class ShippingItemCoupon extends CartCoupon
      */
     protected function getDiscountableCartItems(Cart $cart)
     {
-        $discountableIds = $this->discountable->getDiscountableIdentifiers();
+        $discountableIds = $this->discountable->getDiscountableIdentifiers($cart);
 
         // if discountable is keyword * which means we discount every item in cart
         if ($discountableIds->count() == 1 && $discountableIds->first() == '*')
             return $cart->items();
 
-        return $cart->search(function (CartItem $cartItem) {
-            return in_array($cartItem->id, $this->discountable->getDiscountableIdentifiers()->all());
+        return $cart->search(function (CartItem $cartItem) use ($discountableIds) {
+            return in_array($cartItem->id, $discountableIds->all());
         });
     }
 
@@ -184,7 +184,7 @@ class ShippingItemCoupon extends CartCoupon
      */
     public function getDescription(Cart $cart = null, $options = [])
     {
-        $discountableDescription = $this->discountable->getDiscountableDescription();
+        $discountableDescription = $this->discountable->getDiscountableDescription($cart);
 
         return 'Free shipping'. (!empty($discountableDescription) ? ' to ' . $discountableDescription : '');
     }

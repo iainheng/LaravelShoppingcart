@@ -75,7 +75,7 @@ class ProductCoupon extends CartCoupon
         $discountableCartItems = $this->getDiscountableCartItems($cart);
 
         if ($discountableCartItems->isEmpty() && $throwErrors) {
-            throw new CouponException("Your cart does not contain items from " . $this->product->getDiscountableDescription());
+            throw new CouponException("Your cart does not contain items from " . $this->product->getDiscountableDescription($cart));
         }
 
         if ($discountableCartItems->isNotEmpty()) {
@@ -116,8 +116,10 @@ class ProductCoupon extends CartCoupon
      */
     protected function getDiscountableCartItems(Cart $cart)
     {
-        return $cart->search(function (CartItem $cartItem) {
-            return in_array($cartItem->id, $this->product->getDiscountableIdentifiers()->all());
+        $discountables = $this->product->getDiscountableIdentifiers($cart);
+
+        return $cart->search(function (CartItem $cartItem) use ($discountables) {
+            return in_array($cartItem->id, $discountables->all());
         });
     }
 
@@ -127,7 +129,7 @@ class ProductCoupon extends CartCoupon
      */
     public function getDescription(Cart $cart = null, $options = [])
     {
-        $str = parent::getDescription($cart, $options) . ' for ' . $this->product->getDiscountableDescription();
+        $str = parent::getDescription($cart, $options) . ' for ' . $this->product->getDiscountableDescription($cart);
 
         if ($cart) {
             $discountableCartItems = $this->getDiscountableCartItems($cart);
