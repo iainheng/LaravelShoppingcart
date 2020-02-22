@@ -9,6 +9,7 @@ use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\Contracts\CouponDiscountable;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Gloudemans\Shoppingcart\Traits\ItemCouponTrait;
+use Illuminate\Support\Arr;
 
 class ShippingItemCoupon extends CartCoupon
 {
@@ -57,11 +58,28 @@ class ShippingItemCoupon extends CartCoupon
             throw new CouponException("Your cart does not contain items from " . $this->discountable->getDiscountableDescription());
         }
 
+        $discountableCountryIds = $this->discountable->getAllowedCountries();
+
+        // if restrict shipping discount to certain countries
+        if ($discountableCountryIds->isNotEmpty()) {
+            $shippingCountryId = $this->getShippingCountryId($cart);
+
+            if (!$shippingCountryId && $throwErrors) {
+                throw new CouponException("Invalid shipping country");
+            }
+
+            if (!in_array($shippingCountryId, $discountableCountryIds->all())) {
+                throw new CouponException(ucfirst(config('cart.discount.coupon_label')). ' can only be used on shipping address from ' . $this->discountable->getDiscountableDescription());
+            }
+        }
+
         if ($discountableCartItems->isNotEmpty()) {
             foreach ($discountableCartItems as $cartItem) {
                 $this->setShippingDiscountOnItem($cartItem);
             }
         }
+
+        return $shippingTotal;
     }
 
     /**
@@ -141,7 +159,7 @@ class ShippingItemCoupon extends CartCoupon
     {
         parent::discount($cart, $throwErrors);
 
-        return $cart->itemShippingsFloat();
+        return $cart->shippingFloat();
     }
 
     /**
@@ -187,5 +205,18 @@ class ShippingItemCoupon extends CartCoupon
         $discountableDescription = $this->discountable->getDiscountableDescription();
 
         return 'Free shipping'. (!empty($discountableDescription) ? ' to ' . $discountableDescription : '');
+    }
+
+    /**
+     * Get shipping country id currently in cart
+     *
+     * @param Cart $cart
+     * @return int
+     */
+    protected function getShippingCountryId(Cart $cart)
+    {
+        $shippingAddress = $cart->getAttribute(config('cart.session.shipping'));
+
+        return Arr::get($shippingAddress, 'address.country_id');
     }
 }

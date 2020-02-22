@@ -7,6 +7,7 @@ use Gloudemans\Shoppingcart\Cart;
 use Gloudemans\Shoppingcart\CartCoupon;
 use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\Contracts\CouponDiscountable;
+use Gloudemans\Shoppingcart\Contracts\ShippingCouponDiscountable;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Illuminate\Support\Arr;
 
@@ -20,7 +21,7 @@ class ShippingCoupon extends CartCoupon
     public function __construct(
         $code,
         $value,
-        CouponDiscountable $discountable,
+        ShippingCouponDiscountable $discountable,
         Carbon $dateFrom = null,
         Carbon $dateTo = null,
         $percentageDiscount = false,
@@ -61,11 +62,11 @@ class ShippingCoupon extends CartCoupon
         $shippingTotal = $cart->shippingFloat();
 
         // we apply discount only if current cart shipping value is less than amount we can afford
-        if ($shippingTotal > $this->value) {
+        if ($this->options->get('valid_value') && $shippingTotal > $this->options->get('valid_value')) {
             throw new CouponException('Your cart shipping cost exceeded ' . config('cart.discount.coupon_label') . ' limit.');
         }
 
-        $discountableCountryIds = $this->discountable->getDiscountableIdentifiers();
+        $discountableCountryIds = $this->discountable->getAllowedCountries();
 
         // if restrict shipping discount to certain countries
         if ($discountableCountryIds->isNotEmpty()) {
