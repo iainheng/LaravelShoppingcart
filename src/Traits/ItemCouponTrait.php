@@ -2,17 +2,14 @@
 
 namespace Gloudemans\Shoppingcart\Traits;
 
-use Carbon\Carbon;
-use Gloudemans\Shoppingcart\Cart;
 use Gloudemans\Shoppingcart\CartCoupon;
 use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\Contracts\CouponDiscountable;
-use Gloudemans\Shoppingcart\Exceptions\CouponException;
 
 /**
  * Class ItemCouponTrait.
  *
- * @property-read $discountable CouponDiscountable
+ * @property-read CouponDiscountable $discountable
  */
 trait ItemCouponTrait
 {

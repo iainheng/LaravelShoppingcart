@@ -43,7 +43,7 @@ class ShippingItemCoupon extends CartCoupon
      */
     public function apply(Cart $cart, $throwErrors = true)
     {
-        $this->validate();
+        $this->validate($cart);
 
         $shippingTotal = $cart->shippingFloat();
 

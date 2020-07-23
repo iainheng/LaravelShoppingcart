@@ -62,7 +62,7 @@ abstract class CartCoupon implements Arrayable, Jsonable, Couponable
     )
     {
         $this->type = self::TYPE_ORDER_AMOUNT;
-        
+
         $this->code = $code;
 
         $this->value = $value;
@@ -113,7 +113,7 @@ abstract class CartCoupon implements Arrayable, Jsonable, Couponable
 
     public function discount(Cart $cart, $throwErrors = true)
     {
-        $this->validate();
+        $this->validate($cart);
     }
 
     /**

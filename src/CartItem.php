@@ -585,4 +585,16 @@ class CartItem implements Arrayable, Jsonable
 
         return number_format($value, $decimals, $decimalPoint, $thousandSeperator);
     }
+
+    public function duplicate($newId = null)
+    {
+        if (is_null($newId))
+            $newId = $this->id;
+
+        $clone = clone $this;
+
+        $clone->rowId = $clone->generateRowId($newId, $this->options->all());
+
+        return $clone;
+    }
 }

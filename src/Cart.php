@@ -162,14 +162,14 @@ class Cart
 
         $this->session->put($this->instance, $this->getContent()->put('items', $items));
 
-//        if ($newItem) {
-            // reapply coupons
-            $coupons = $this->allCoupons();
-
-            foreach ($coupons as $coupon) {
-                $coupon->apply($this);
-            }
-//        }
+////        if ($newItem) {
+//            // reapply coupons
+//            $coupons = $this->allCoupons();
+//
+//            foreach ($coupons as $coupon) {
+//                $coupon->apply($this);
+//            }
+////        }
 
         return $item;
     }
@@ -331,7 +331,7 @@ class Cart
 
     /**
      * Get all coupons from coupons collection and item coupons
-     * 
+     *
      * @return Collection
      */
     public function allCoupons()
@@ -785,7 +785,7 @@ class Cart
 
         foreach ($this->coupons() as $coupon) {
 //            if ($coupon->appliedToCart) {
-                $total += $coupon->discount($this);
+            $total += $coupon->discount($this);
 //            }
         }
 

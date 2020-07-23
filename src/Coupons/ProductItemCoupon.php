@@ -42,7 +42,7 @@ class ProductItemCoupon extends CartCoupon
      */
     public function apply(Cart $cart, $throwErrors = true)
     {
-        $this->validate();
+        $this->validate($cart);
 
         $discountableCartItems = $this->getDiscountableCartItems($cart);
 

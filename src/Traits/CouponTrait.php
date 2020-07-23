@@ -169,7 +169,7 @@ trait CouponTrait
      * @return bool
      * @throws CouponException
      */
-    protected function validate()
+    protected function validate(Cart $cart)
     {
         if ($this->dateTo && Carbon::now()->greaterThan($this->dateTo)) {
             throw new CouponException(ucfirst(config('cart.discount.coupon_label')) . ' has expired');
@@ -177,6 +177,12 @@ trait CouponTrait
 
         if ($this->dateFrom && Carbon::now()->lessThan($this->dateFrom)) {
             throw new CouponException(ucfirst(config('cart.discount.coupon_label')) . ' is not activated yet and will be effective on ' . $this->dateFrom->format(config('cart.date_format')));
+        }
+
+        $discountableCartItems = $this->getDiscountableCartItems($cart);
+
+        if ($discountableCartItems->isEmpty() && $throwErrors) {
+            throw new CouponException("Your cart does not contain items from " . $this->discountable->getDiscountableDescription());
         }
 
         return true;
