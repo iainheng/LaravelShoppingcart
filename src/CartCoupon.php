@@ -4,6 +4,7 @@ namespace Gloudemans\Shoppingcart;
 
 use Carbon\Carbon;
 use Gloudemans\Shoppingcart\Contracts\Couponable;
+use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Gloudemans\Shoppingcart\Traits\CouponTrait;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
@@ -113,7 +114,12 @@ abstract class CartCoupon implements Arrayable, Jsonable, Couponable
 
     public function discount(Cart $cart, $throwErrors = true)
     {
-        $this->validate($cart);
+        try {
+            $this->validate($cart);
+        } catch (CouponException $ce) {
+            if ($throwErrors)
+                throw $ce;
+        }
     }
 
     /**

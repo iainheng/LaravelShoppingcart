@@ -632,7 +632,7 @@ class Cart
 
         $coupon->apply($this);
 
-        if ($coupon->isApplyToCart()) {
+        if ($coupon->isApplyToCart() && $coupon->discount($this, false)) {
             $coupons = $this->coupons();
 
             $coupons->put($coupon->getCode(), $coupon);
@@ -654,6 +654,8 @@ class Cart
      */
     public function removeCoupon($code)
     {
+        $code = urldecode($code);
+
         $coupon = $this->getCoupon($code);
 
         $coupon->forget($this);

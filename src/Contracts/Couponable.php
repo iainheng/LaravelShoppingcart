@@ -62,7 +62,7 @@ interface Couponable
      * @return float
      * @throws CouponException
      */
-    public function discount(Cart $cart);
+    public function discount(Cart $cart, $throwErrors = true);
 
     /**
      * If an item is supplied it will get its discount value.

@@ -77,10 +77,10 @@ trait CouponTrait
      *
      * @return null|string
      */
-    public function getFailedMessage()
+    public function getFailedMessage(Cart $cart)
     {
         try {
-            $this->discount(true);
+            $this->discount($cart, true);
         } catch (CouponException $e) {
             return $e->getMessage();
         }
@@ -179,11 +179,11 @@ trait CouponTrait
             throw new CouponException(ucfirst(config('cart.discount.coupon_label')) . ' is not activated yet and will be effective on ' . $this->dateFrom->format(config('cart.date_format')));
         }
 
-        $discountableCartItems = $this->getDiscountableCartItems($cart);
-
-        if ($discountableCartItems->isEmpty() && $throwErrors) {
-            throw new CouponException("Your cart does not contain items from " . $this->discountable->getDiscountableDescription());
-        }
+//        $discountableCartItems = $this->getDiscountableCartItems($cart);
+//
+//        if ($discountableCartItems->isEmpty() && $throwErrors) {
+//            throw new CouponException("Your cart does not contain items from " . $this->discountable->getDiscountableDescription());
+//        }
 
         return true;
     }
