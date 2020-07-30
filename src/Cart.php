@@ -642,6 +642,10 @@ class Cart
 
         $this->events->dispatch('cart.coupon_added', $coupon);
 
+        foreach ($this->allCoupons() as $coupon) {
+            $coupon->cleanBeforeSave();
+        }
+
         return $coupon;
     }
 

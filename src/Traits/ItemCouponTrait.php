@@ -5,6 +5,7 @@ namespace Gloudemans\Shoppingcart\Traits;
 use Gloudemans\Shoppingcart\CartCoupon;
 use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\Contracts\CouponDiscountable;
+use Gloudemans\Shoppingcart\Coupons\ShippingItemCoupon;
 
 /**
  * Class ItemCouponTrait.
@@ -25,12 +26,17 @@ trait ItemCouponTrait
      *
      * @var string|null
      */
-    private $discoutableModel = null;
+    private $discoutableClass = null;
 
     /**
      * @var bool
      */
     protected $applyOnce;
+
+    /**
+     * @var CouponDiscountable
+     */
+    protected $discountableModel;
 
     /**
      * Sets a discount to an item with what code was used and the discount amount.
@@ -69,8 +75,9 @@ trait ItemCouponTrait
      */
     public function associate($discountable)
     {
-        $this->discoutableModel = is_string($discountable) ? $discountable : get_class($discountable);
+        $this->discoutableClass = is_string($discountable) ? $discountable : get_class($discountable);
         $this->discountableId = $discountable->id;
+        $this->discountableModel = $discountable;
 
         return $this;
     }
@@ -90,13 +97,17 @@ trait ItemCouponTrait
 
         switch ($attribute) {
             case 'discountable':
-                if (isset($this->discoutableModel)) {
-                    return with(new $this->discoutableModel)->find($this->discountableId);
+                if (!$this->discountableModel && isset($this->discoutableClass)) {
+                    $this->discountableModel = with(new $this->discoutableClass)->find($this->discountableId);
                 }
+
+                return $this->discountableModel;
+                break;
             case 'discountableFQCN':
-                if (isset($this->associatedModel)) {
-                    return $this->associatedModel;
+                if (isset($this->discoutableClass)) {
+                    return $this->discoutableClass;
                 }
+                break;
             default:
                 return;
         }

@@ -197,4 +197,15 @@ trait CouponTrait
     {
         return $this->applyToCart;
     }
+
+    /**
+     * Perform clean up before saving coupon to session
+     *
+     */
+    public function cleanBeforeSave()
+    {
+        // we clear discountable model before saving so that we are not save big eloquent object with all its relations
+        if (isset($this->discountableModel))
+            $this->discountableModel = null;
+    }
 }

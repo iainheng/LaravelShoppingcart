@@ -102,4 +102,11 @@ interface Couponable
      * @return string
      */
     public function toJson($options = 0);
+
+    /**
+     * Perform clean up before saving coupon to session
+     *
+     * @return void
+     */
+    public function cleanBeforeSave();
 }

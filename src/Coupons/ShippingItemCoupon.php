@@ -28,10 +28,11 @@ class ShippingItemCoupon extends CartCoupon
     {
         parent::__construct($code, $value, $percentageDiscount, $dateFrom, $dateTo, $options);
 
-        $this->discountable = $discountable;
+//        $this->discountable = $discountable;
         $this->applyOnce = $applyOnce;
         $this->applyToCart = true;
         $this->type = self::TYPE_SHIPPING;
+        $this->associate($discountable);
     }
 
     /**
