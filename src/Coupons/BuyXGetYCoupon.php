@@ -61,10 +61,10 @@ class BuyXGetYCoupon extends ProductItemCoupon
         list($fullPriceQty, $discountPriceQty) = $this->getFullAndDiscountQuantityBreakdown($requiredQuantity,
             $receivedQuantity, $totalEligibleCartItems);
 
-//        dump($intersectItemsQuantities);
 //        dump($fullPriceQty, $discountPriceQty);
 
-        if ((!$requiredAmountMode && $requiredCartItems->sum('qty') < $fullPriceQty) || ($requiredAmountMode && !$requiredCartItems->sum('priceTax') >= $requiredAmount)) {
+        if ((!$requiredAmountMode && $requiredCartItems->sum('qty') + ($discountableCartItems->sum('qty') - $discountPriceQty) < $fullPriceQty) ||
+            ($requiredAmountMode && !$requiredCartItems->sum('priceTax') >= $requiredAmount)) {
             throw new CouponException("Your cart items does not meet requirements of this discount.");
         }
 
