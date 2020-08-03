@@ -37,7 +37,10 @@ class BuyXGetYCoupon extends ProductItemCoupon
         parent::validate($cart);
 
         $requiredCartItems = $this->getRequiredCartItems($cart);
+        $requiredCartItemsQty = $requiredCartItems->sum('qty');
+
         $discountableCartItems = $this->getDiscountableCartItems($cart);
+        $discountableCartItemsQty = $discountableCartItems->sum('qty');
 
         $requiredAmount = $this->discountable->getMinRequiredAmount();
         $requiredQuantity = $this->discountable->getMinRequiredQuantity();
@@ -54,16 +57,21 @@ class BuyXGetYCoupon extends ProductItemCoupon
             });
         });
 
-        $totalEligibleCartItems = $requiredCartItems->sum('qty') + $discountableCartItems->sum('qty') - $intersectItemsQuantities->sum();
+        $totalEligibleCartItemsQty = $requiredCartItemsQty + $discountableCartItemsQty - $intersectItemsQuantities->sum();
 
-//        dump($requiredQuantity, $receivedQuantity, $totalEligibleCartItems);
+        if ($requiredCartItemsQty < $discountableCartItemsQty) {
+            $totalEligibleCartItemsQty = $requiredCartItemsQty * 2;
+        }
+
+//        dump($requiredQuantity, $receivedQuantity, $totalEligibleCartItemsQty);
 
         list($fullPriceQty, $discountPriceQty) = $this->getFullAndDiscountQuantityBreakdown($requiredQuantity,
-            $receivedQuantity, $totalEligibleCartItems);
+            $receivedQuantity, $totalEligibleCartItemsQty);
 
 //        dump($fullPriceQty, $discountPriceQty);
 
-        if ((!$requiredAmountMode && $requiredCartItems->sum('qty') + ($discountableCartItems->sum('qty') - $discountPriceQty) < $fullPriceQty) ||
+        if ((!$requiredAmountMode &&
+                ($requiredCartItemsQty < $requiredQuantity || $requiredCartItemsQty + ($discountableCartItemsQty - $discountPriceQty) < $fullPriceQty)) ||
             ($requiredAmountMode && !$requiredCartItems->sum('priceTax') >= $requiredAmount)) {
             throw new CouponException("Your cart items does not meet requirements of this discount.");
         }
@@ -85,7 +93,10 @@ class BuyXGetYCoupon extends ProductItemCoupon
         $this->validate($cart);
 
         $requiredCartItems = $this->getRequiredCartItems($cart);
+        $requiredCartItemsQty = $requiredCartItems->sum('qty');
+
         $discountableCartItems = $this->getDiscountableCartItems($cart);
+        $discountableCartItemsQty = $discountableCartItems->sum('qty');
 
         $requiredAmount = $this->discountable->getMinRequiredAmount();
         $requiredQuantity = $this->discountable->getMinRequiredQuantity();
@@ -102,10 +113,14 @@ class BuyXGetYCoupon extends ProductItemCoupon
             });
         });
 
-        $totalEligibleCartItems = $requiredCartItems->sum('qty') + $discountableCartItems->sum('qty') - $intersectItemsQuantities->sum();
+        $totalEligibleCartItemsQty = $requiredCartItemsQty + $discountableCartItemsQty - $intersectItemsQuantities->sum();
+
+        if ($requiredCartItemsQty < $discountableCartItemsQty) {
+            $totalEligibleCartItemsQty = $requiredCartItemsQty * 2;
+        }
 
         list($fullPriceQty, $discountPriceQty) = $this->getFullAndDiscountQuantityBreakdown($requiredQuantity,
-            $receivedQuantity, $totalEligibleCartItems);
+            $receivedQuantity, $totalEligibleCartItemsQty);
 
 //        dump($discountableCartItems, 'discountableCartItems');
 
