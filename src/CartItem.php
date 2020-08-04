@@ -14,6 +14,16 @@ use Illuminate\Support\Arr;
  *
  * @package Gloudemans\Shoppingcart
  * @property Couponable $coupon
+ * @property-read mixed discount
+ * @property-read float discountTotal
+ * @property-read float priceTarget
+ * @property-read float priceNet
+ * @property-read float priceTotal
+ * @property-read float subtotal
+ * @property-read float taxTotal
+ * @property-read float tax
+ * @property-read float total
+ * @property-read float priceTax
  */
 class CartItem implements Arrayable, Jsonable
 {
@@ -67,11 +77,11 @@ class CartItem implements Arrayable, Jsonable
     public $options;
 
     /**
-     * The FQN of the associated model.
+     * The tax rate for the cart item.
      *
-     * @var string|null
+     * @var int|float
      */
-    private $associatedModel = null;
+    public $taxRate = 0;
 
     /**
      * @var bool
@@ -79,11 +89,11 @@ class CartItem implements Arrayable, Jsonable
     public $taxIncluded = false;
 
     /**
-     * The tax rate for the cart item.
+     * The FQN of the associated model.
      *
-     * @var int|float
+     * @var string|null
      */
-    private $taxRate = 0;
+    private $associatedModel = null;
 
     /**
      * The discount rate for the cart item.
@@ -113,6 +123,7 @@ class CartItem implements Arrayable, Jsonable
      * @param int|string $id
      * @param string     $name
      * @param float      $price
+     * @param float      $weight
      * @param array      $options
      */
     public function __construct($id, $name, $price, $weight = 0, array $options = [])
@@ -281,6 +292,20 @@ class CartItem implements Arrayable, Jsonable
     }
 
     /**
+     * Returns the formatted total price for this cart item.
+     *
+     * @param int    $decimals
+     * @param string $decimalPoint
+     * @param string $thousandSeperator
+     *
+     * @return string
+     */
+    public function priceTotal($decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    {
+        return $this->numberFormat($this->priceTotal, $decimals, $decimalPoint, $thousandSeperator);
+    }
+
+    /**
      * Set the quantity for this cart item.
      *
      * @param int|float $qty
@@ -335,7 +360,6 @@ class CartItem implements Arrayable, Jsonable
         $this->id = $item->getBuyableIdentifier($this->options);
         $this->name = $item->getBuyableDescription($this->options);
         $this->price = $item->getBuyablePrice($this->options);
-        $this->priceTax = $this->price + $this->tax;
     }
 
     /**
@@ -426,45 +450,82 @@ class CartItem implements Arrayable, Jsonable
         if (property_exists($this, $attribute)) {
             return $this->{$attribute};
         }
+        $decimals = config('cart.format.decimals', 2);
 
         switch ($attribute) {
-            case 'discount':
-                return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : $this->discountRate;
-            case 'priceTarget':
-                return max($this->price - $this->discount, 0);
-            case 'subtotal':
-                return $this->priceTarget * $this->qty;
-            case 'tax':
-                return ($this->taxIncluded) ?
-                    calc_tax_amount($this->priceTarget, $this->taxRate, $this->taxIncluded) :
-                    $this->priceTarget * ($this->taxRate / 100);
-            case 'priceTax':
-                return ($this->taxIncluded) ? $this->priceTarget : $this->priceTarget + $this->tax;
-            case 'total':
-                return $this->priceTax * $this->qty;
-            case 'taxTotal':
-            case 'taxed':
-                return $this->tax * $this->qty;
-            case 'taxable':
-                return ($this->taxIncluded) ? $this->total - $this->taxTotal : $this->subtotal;
-            case 'discountTotal':
-                return $this->discount * $this->qty;
-            case 'weightTotal':
-                return $this->weight * $this->qty;
-
             case 'model':
                 if (isset($this->associatedModel)) {
                     return with(new $this->associatedModel())->find($this->id);
                 }
-
+                // no break
             case 'modelFQCN':
                 if (isset($this->associatedModel)) {
                     return $this->associatedModel;
                 }
+                // no break
+            case 'weightTotal':
+                return round($this->weight * $this->qty, $decimals);
             case 'coupon':
                 return ($this->coupon) ? $this->coupon : null;
-            default:
-                return;
+        }
+
+        //todo:ignore gross price temporary
+        if (config('cart.gross_price')) {
+            switch ($attribute) {
+                case 'priceNet':
+                    return round($this->price / (1 + ($this->taxRate / 100)), $decimals);
+                case 'discount':
+                    return $this->priceNet * ($this->discountRate / 100);
+                case 'tax':
+                    return round($this->priceTarget * ($this->taxRate / 100), $decimals);
+                case 'priceTax':
+                    return round($this->priceTarget + $this->tax, $decimals);
+                case 'discountTotal':
+                    return round($this->discount * $this->qty, $decimals);
+                case 'priceTotal':
+                    return round($this->priceNet * $this->qty, $decimals);
+                case 'subtotal':
+                    return round($this->priceTotal - $this->discountTotal, $decimals);
+                case 'priceTarget':
+                    return round(($this->priceTotal - $this->discountTotal) / $this->qty, $decimals);
+                case 'taxTotal':
+                    return round($this->subtotal * ($this->taxRate / 100), $decimals);
+                case 'total':
+                    return round($this->subtotal + $this->taxTotal, $decimals);
+                default:
+                    return;
+            }
+        } else {
+            switch ($attribute) {
+                case 'discount':
+                    return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : $this->discountRate;
+                case 'tax':
+                    $amount = ($this->taxIncluded) ?
+                        calc_tax_amount($this->priceTarget, $this->taxRate, $this->taxIncluded) :
+                        $this->priceTarget * ($this->taxRate / 100);
+
+                    return round($amount, $decimals);
+                case 'taxTotal':
+                case 'taxed':
+                    return $this->tax * $this->qty;
+                case 'taxable':
+                    return ($this->taxIncluded) ? $this->total - $this->taxTotal : $this->subtotal;
+                case 'priceTax':
+                    $amount = ($this->taxIncluded) ? $this->priceTarget : $this->priceTarget + $this->tax;
+                    return round($amount, $decimals);
+                case 'discountTotal':
+                    return round($this->discount * $this->qty, $decimals);
+                case 'priceTotal':
+                    return round($this->price * $this->qty, $decimals);
+                case 'subtotal':
+                    return round($this->priceTotal - $this->discountTotal, $decimals);
+                case 'priceTarget':
+                    return max(round(($this->priceTotal - $this->discountTotal) / $this->qty, $decimals), 0);
+                case 'total':
+                    return round($this->subtotal + $this->taxTotal, $decimals);
+                default:
+                    return;
+            }
         }
     }
 

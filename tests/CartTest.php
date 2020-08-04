@@ -2,6 +2,7 @@
 
 namespace Gloudemans\Tests\Shoppingcart;
 
+use Carbon\Carbon;
 use Gloudemans\Shoppingcart\Cart;
 use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\ShoppingcartServiceProvider;
@@ -400,6 +401,21 @@ class CartTest extends TestCase
     }
 
     /** @test */
+    public function it_will_keep_items_sequence_if_the_options_changed()
+    {
+        $cart = $this->getCart();
+
+        $cart->add(new BuyableProduct(), 1, ['color' => 'red']);
+        $cart->add(new BuyableProduct(), 1, ['color' => 'green']);
+        $cart->add(new BuyableProduct(), 1, ['color' => 'blue']);
+
+        $cart->update($cart->content()->values()[1]->rowId, ['options' => ['color' => 'yellow']]);
+
+        $this->assertRowsInCart(3, $cart);
+        $this->assertEquals('yellow', $cart->content()->values()[1]->options->color);
+    }
+
+    /** @test */
     public function it_can_remove_an_item_from_the_cart()
     {
         Event::fake();
@@ -757,6 +773,20 @@ class CartTest extends TestCase
     }
 
     /** @test */
+    public function it_can_access_tax_as_percentage()
+    {
+        $cart = $this->getCart();
+
+        $cart->add(new BuyableProduct(1, 'Some title', 10.00), 1);
+
+        $cart->setTax('027c91341fd5cf4d2579b49c4b6a90da', 19);
+
+        $cartItem = $cart->get('027c91341fd5cf4d2579b49c4b6a90da');
+
+        $this->assertEquals(19, $cartItem->taxRate);
+    }
+
+    /** @test */
     public function it_can_return_the_subtotal()
     {
         $cart = $this->getCart();
@@ -837,6 +867,50 @@ class CartTest extends TestCase
         $serialized = serialize($cart->content());
 
         $this->assertDatabaseHas('shoppingcart', ['identifier' => $identifier, 'instance' => 'default', 'content' => $serialized]);
+
+        Event::assertDispatched('cart.stored');
+    }
+
+    /** @test */
+    public function it_can_store_and_retrieve_cart_from_the_database_with_correct_timestamps()
+    {
+        $this->artisan('migrate', [
+            '--database' => 'testing',
+        ]);
+
+        Event::fake();
+
+        $cart = $this->getCart();
+
+        $cart->add(new BuyableProduct());
+
+        /* Sleep as database does not store ms */
+        $beforeStore = Carbon::now();
+        sleep(1);
+
+        $cart->store($identifier = 123);
+
+        sleep(1);
+        $afterStore = Carbon::now();
+
+        $cart->restore($identifier);
+
+        $this->assertTrue($beforeStore->lessThanOrEqualTo($cart->createdAt()) && $afterStore->greaterThanOrEqualTo($cart->createdAt()));
+        $this->assertTrue($beforeStore->lessThanOrEqualTo($cart->updatedAt()) && $afterStore->greaterThanOrEqualTo($cart->updatedAt()));
+
+        /* Sleep as database does not store ms */
+        $beforeSecondStore = Carbon::now();
+        sleep(1);
+
+        $cart->store($identifier);
+
+        sleep(1);
+        $afterSecondStore = Carbon::now();
+
+        $cart->restore($identifier);
+
+        $this->assertTrue($beforeStore->lessThanOrEqualTo($cart->createdAt()) && $afterStore->greaterThanOrEqualTo($cart->createdAt()));
+        $this->assertTrue($beforeSecondStore->lessThanOrEqualTo($cart->updatedAt()) && $afterSecondStore->greaterThanOrEqualTo($cart->updatedAt()));
 
         Event::assertDispatched('cart.stored');
     }
@@ -931,6 +1005,52 @@ class CartTest extends TestCase
     }
 
     /** @test */
+    public function it_can_calculate_all_values_after_updating_from_array()
+    {
+        $cart = $this->getCartDiscount(50);
+        $cart->add(new BuyableProduct(1, 'First item', 10.00), 1);
+
+        $cart->update('027c91341fd5cf4d2579b49c4b6a90da', ['qty'=>2]);
+
+        $cartItem = $cart->get('027c91341fd5cf4d2579b49c4b6a90da');
+
+        $cart->setTax('027c91341fd5cf4d2579b49c4b6a90da', 19);
+
+        $this->assertEquals(10.00, $cartItem->price(2));
+        $this->assertEquals(5.00, $cartItem->discount(2));
+        $this->assertEquals(10.00, $cartItem->discountTotal(2));
+        $this->assertEquals(5.00, $cartItem->priceTarget(2));
+        $this->assertEquals(10.00, $cartItem->subtotal(2));
+        $this->assertEquals(0.95, $cartItem->tax(2));
+        $this->assertEquals(1.90, $cartItem->taxTotal(2));
+        $this->assertEquals(5.95, $cartItem->priceTax(2));
+        $this->assertEquals(11.90, $cartItem->total(2));
+    }
+
+    /** @test */
+    public function it_can_calculate_all_values_after_updating_from_buyable()
+    {
+        $cart = $this->getCartDiscount(50);
+        $cart->add(new BuyableProduct(1, 'First item', 5.00), 2);
+
+        $cart->update('027c91341fd5cf4d2579b49c4b6a90da', new BuyableProduct(1, 'First item', 10.00));
+
+        $cartItem = $cart->get('027c91341fd5cf4d2579b49c4b6a90da');
+
+        $cart->setTax('027c91341fd5cf4d2579b49c4b6a90da', 19);
+
+        $this->assertEquals(10.00, $cartItem->price(2));
+        $this->assertEquals(5.00, $cartItem->discount(2));
+        $this->assertEquals(10.00, $cartItem->discountTotal(2));
+        $this->assertEquals(5.00, $cartItem->priceTarget(2));
+        $this->assertEquals(10.00, $cartItem->subtotal(2));
+        $this->assertEquals(0.95, $cartItem->tax(2));
+        $this->assertEquals(1.90, $cartItem->taxTotal(2));
+        $this->assertEquals(5.95, $cartItem->priceTax(2));
+        $this->assertEquals(11.90, $cartItem->total(2));
+    }
+
+    /** @test */
     public function it_will_destroy_the_cart_when_the_user_logs_out_and_the_config_setting_was_set_to_true()
     {
         $this->app['config']->set('cart.destroy_on_logout', true);
@@ -974,7 +1094,7 @@ class CartTest extends TestCase
     }
 
     /** @test */
-    public function cart_hast_no_rounding_errors()
+    public function cart_has_no_rounding_errors()
     {
         $cart = $this->getCart();
 
@@ -1175,6 +1295,122 @@ class CartTest extends TestCase
         $this->assertEquals('large', $cartItem->options->size);
     }
 
+    /** @test */
+    public function it_can_merge_without_dispatching_add_events()
+    {
+        $this->artisan('migrate', [
+            '--database' => 'testing',
+        ]);
+
+        $cart = $this->getCartDiscount(50);
+        $cart->add(new BuyableProduct(1, 'Item', 10.00), 1);
+        $cart->add(new BuyableProduct(2, 'Item 2', 10.00), 1);
+        $cart->store('test');
+
+        Event::fakeFor(function () {
+            $cart2 = $this->getCart();
+            $cart2->instance('test2');
+            $cart2->setGlobalTax(0);
+            $cart2->setGlobalDiscount(0);
+
+            $this->assertEquals('0', $cart2->countInstances());
+
+            $cart2->merge('test', null, null, false);
+
+            Event::assertNotDispatched('cart.added');
+            Event::assertDispatched('cart.merged');
+
+            $this->assertEquals('2', $cart2->countInstances());
+            $this->assertEquals(20, $cart2->totalFloat());
+        });
+    }
+
+    /** @test */
+    public function it_can_merge_dispatching_add_events()
+    {
+        $this->artisan('migrate', [
+            '--database' => 'testing',
+        ]);
+
+        $cart = $this->getCartDiscount(50);
+        $cart->add(new BuyableProduct(1, 'Item', 10.00), 1);
+        $cart->add(new BuyableProduct(2, 'Item 2', 10.00), 1);
+        $cart->store('test');
+
+        Event::fakeFor(function () {
+            $cart2 = $this->getCart();
+            $cart2->instance('test2');
+            $cart2->setGlobalTax(0);
+            $cart2->setGlobalDiscount(0);
+
+            $this->assertEquals('0', $cart2->countInstances());
+
+            $cart2->merge('test');
+
+            Event::assertDispatched('cart.added', 2);
+            Event::assertDispatched('cart.merged');
+            $this->assertEquals('2', $cart2->countInstances());
+            $this->assertEquals(20, $cart2->totalFloat());
+        });
+    }
+
+    /** @test */
+    public function it_use_correctly_rounded_values_for_totals_and_cart_summary()
+    {
+        $this->setConfigFormat(2, ',', '');
+
+        $cart = $this->getCartDiscount(6);
+
+        $cartItem = $cart->add(new BuyableProduct(1, 'First item', 0.18929), 1000);
+        $cart->add(new BuyableProduct(2, 'Second item', 4.41632), 5);
+        $cart->add(new BuyableProduct(3, 'Third item', 0.37995), 25);
+
+        $cart->setGlobalTax(22);
+
+        // check total
+        $this->assertEquals('253,29', $cart->total());
+
+        // check that the sum of cart subvalues matches the total (in order to avoid cart summary to looks wrong)
+        $this->assertEquals($cart->totalFloat(), $cart->subtotalFloat() + $cart->taxFloat());
+    }
+
+    /** @test */
+    public function it_use_gross_price_as_base_price()
+    {
+        $cart = $this->getCartDiscount(0);
+        config(['cart.gross_price' => true]);
+
+        $cartItem = $cart->add(new BuyableProduct(1, 'First item', 100), 2);
+
+        $cart->setGlobalTax(22);
+
+        // check net price
+        $this->assertEquals(81.97, round($cartItem->priceNet, 2));
+    }
+
+    /** @test */
+    public function it_use_gross_price_and_it_use_correctly_rounded_values_for_totals_and_cart_summary()
+    {
+        $this->setConfigFormat(2, ',', '');
+        config(['cart.gross_price' => true]);
+
+        $cart = $this->getCartDiscount(6);
+
+        $cartItem = $cart->add(new BuyableProduct(1, 'First item', 0.23093), 1000);
+        $cart->add(new BuyableProduct(2, 'Second item', 5.38791), 5);
+        $cart->add(new BuyableProduct(3, 'Third item', 0.46354), 25);
+
+        $cart->setGlobalTax(22);
+
+        // check total
+        $this->assertEquals('254,12', $cart->total());
+
+        // check item price total
+        $this->assertEquals(190, $cartItem->priceTotal);
+        // check that the sum of cart subvalues matches the total (in order to avoid cart summary to looks wrong)
+        $this->assertEquals($cart->totalFloat(), $cart->subtotalFloat() + $cart->taxFloat());
+    }
+
     /**
      * Get an instance of the cart.
      *
@@ -1191,12 +1427,14 @@ class CartTest extends TestCase
     /**
      * Get an instance of the cart with discount.
      *
+     * @param int $discount
+     *
      * @return \Gloudemans\Shoppingcart\Cart
      */
-    private function getCartDiscount($discount = 0)
+    private function getCartDiscount($discount = 50)
     {
         $cart = $this->getCart();
-        $cart->setGlobalDiscount(50);
+        $cart->setGlobalDiscount($discount);
 
         return $cart;
     }

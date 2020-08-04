@@ -7,7 +7,7 @@
 [![Latest Unstable Version](https://poser.pugx.org/bumbummen99/shoppingcart/v/unstable)](https://packagist.org/packages/bumbummen99/shoppingcart)
 [![License](https://poser.pugx.org/bumbummen99/shoppingcart/license)](https://packagist.org/packages/bumbummen99/shoppingcart)
 
-This is a fork of [Crisane's LaravelShoppingcart](https://github.com/Crinsane/LaravelShoppingcart) extended with minor features compatible with Laravel 5.8.
+This is a fork of [Crinsane's LaravelShoppingcart](https://github.com/Crinsane/LaravelShoppingcart) extended with minor features compatible with Laravel 7+. An example integration can be [found here](https://github.com/bumbummen99/LaravelShoppingcartDemo).
 
 ## Installation
 
@@ -21,9 +21,10 @@ Now you're ready to start using the shoppingcart in your application.
 
 **As of version 2 of this package it's possibly to use dependency injection to inject an instance of the Cart class into your controller or other class**
 
-## Overview
+## Table of Contents
 Look at one of the following topics to learn more about LaravelShoppingcart
 
+* [Important note](#important-note)
 * [Usage](#usage)
 * [Collections](#collections)
 * [Instances](#instances)
@@ -32,6 +33,14 @@ Look at one of the following topics to learn more about LaravelShoppingcart
 * [Exceptions](#exceptions)
 * [Events](#events)
 * [Example](#example)
+
+## Important note
+
+As all the shopping cart that calculate prices including taxes and discount, also this module could be affected by the "totals rounding issue" ([*](https://stackoverflow.com/questions/13529580/magento-tax-rounding-issue)) due to the decimal precision used for prices and for the results.
+In order to avoid (or at least minimize) this issue, in the Laravel shoppingcart package the totals are calculated using the method **"per Row"** and returned already rounded based on the number format set as default in the config file (cart.php).
+Due to this **WE DISCOURAGE TO SET HIGH PRECISION AS DEFAULT AND TO FORMAT THE OUTPUT RESULT USING LESS DECIMAL** Doing this can lead to the rounding issue.
+
+The base price (product price) is left not rounded.
 
 ## Usage
 
@@ -102,6 +111,16 @@ $rowId = 'da39a3ee5e6b4b0d3255bfef95601890afd80709';
 Cart::update($rowId, 2); // Will update the quantity
 ```
 
+If you would like to update options of an item inside the cart, 
+
+```php
+$rowId = 'da39a3ee5e6b4b0d3255bfef95601890afd80709';
+
+Cart::update($rowId, ['options'  => ['size' => 'small']]); // Will update the size option with new value
+```
+
+
+
 If you want to update more attributes of the item, you can either pass the update method an array or a `Buyable` as the second parameter. This way you can update all information of the item with the given rowId.
 
 ```php
@@ -155,7 +174,7 @@ Cart::destroy();
 
 ### Cart::weight()
 
-The `weight()` method can be used to get the weight total of all items in the cart, given there weight and quantity.
+The `weight()` method can be used to get the weight total of all items in the cart, given their weight and quantity.
 
 ```php
 Cart::weight();
@@ -245,16 +264,34 @@ You can set the default number format in the config file.
 
 ### Cart::initial()
 
-The `initial()` method can be used to get the total price of all items in the cart before discount. 
+The `initial()` method can be used to get the total price of all items in the cart before applying discount and taxes. 
+
+It could be deprecated in the future. **When rounded could be affected by the rounding issue**, use it carefully or use [Cart::priceTotal()](#Cart::priceTotal())
 
 ```php
 Cart::initial();
 ```
 
-The method will automatically format the result, which you can tweak using the three optional parameters
+The method will automatically format the result, which you can tweak using the three optional parameters. 
 
 ```php
 Cart::initial($decimals, $decimalSeparator, $thousandSeparator);
+```
+
+You can set the default number format in the config file.
+
+### Cart::priceTotal()
+
+The `priceTotal()` method can be used to get the total price of all items in the cart before applying discount and taxes. 
+
+```php
+Cart::priceTotal();
+```
+
+The method return the result rounded based on the default number format, but you can tweak using the three optional parameters
+
+```php
+Cart::priceTotal($decimals, $decimalSeparator, $thousandSeparator);
 ```
 
 You can set the default number format in the config file.
@@ -540,10 +577,18 @@ If you want to retrieve the cart from the database and restore it, all you have 
     Cart::instance('wishlist')->restore('username');
 
 ### Merge the cart
-If you want to merge the cart with another one from the database, all you have to do is call the  `merge($identifier)` where `$identifier` is the key you specified for the `store` method. You can also define if you want to keep the discount and tax rates of the items.
+If you want to merge the cart with another one from the database, all you have to do is call the  `merge($identifier)` where `$identifier` is the key you specified for the `store` method. You can also define if you want to keep the discount and tax rates of the items and if you want to dispatch "cart.added" events.
      
     // Merge the contents of 'savedcart' into 'username'.
-    Cart::instance('username')->merge('savedcart', $keepDiscount, $keepTaxrate);
+    Cart::instance('username')->merge('savedcart', $keepDiscount, $keepTaxrate, $dispatchAdd);
+
+### Erasing the cart
+If you want to erase the cart from the database, all you have to do is call the  `erase($identifier)` where `$identifier` is the key you specified for the `store` method.
+ 
+    Cart::erase('username');
+    
+    // To erase a cart switching to an instance named 'wishlist'
+    Cart::instance('wishlist')->erase('username');
 
 ## Exceptions
 
@@ -564,8 +609,10 @@ The cart also has events build in. There are five events available for you to li
 | cart.added    | When an item was added to the cart.      | The `CartItem` that was added.   |
 | cart.updated  | When an item in the cart was updated.    | The `CartItem` that was updated. |
 | cart.removed  | When an item is removed from the cart.   | The `CartItem` that was removed. |
+| cart.merged   | When the content of a cart is merged     | -                                |
 | cart.stored   | When the content of a cart was stored.   | -                                |
 | cart.restored | When the content of a cart was restored. | -                                |
+| cart.erased   | When the content of a cart was erased.   | -                                |
 
 ## Example
 
