@@ -1223,7 +1223,7 @@ class Cart
      */
     public function store($identifier)
     {
-        $content = $this->getContent();
+        $content = $this->items();
 
         if ($identifier instanceof InstanceIdentifier) {
             $identifier = $identifier->getInstanceIdentifier();
@@ -1272,9 +1272,13 @@ class Cart
 
         $content = $this->getContent();
 
+        $contentItems = $content->get('items', collect());
+
         foreach ($storedContent as $cartItem) {
-            $content->put($cartItem->rowId, $cartItem);
+            $contentItems->put($cartItem->rowId, $cartItem);
         }
+
+        $content->put('items', $contentItems);
 
         $this->events->dispatch('cart.restored');
 
