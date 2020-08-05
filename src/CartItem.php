@@ -518,7 +518,7 @@ class CartItem implements Arrayable, Jsonable
                 case 'priceTotal':
                     return round($this->price * $this->qty, $decimals);
                 case 'subtotal':
-                    return round($this->priceTotal - $this->discountTotal, $decimals);
+                    return max(round($this->priceTotal - $this->discountTotal, $decimals), 0);
                 case 'priceTarget':
                     return max(round(($this->priceTotal - $this->discountTotal) / $this->qty, $decimals), 0);
                 case 'total':
