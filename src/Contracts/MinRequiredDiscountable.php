@@ -5,7 +5,7 @@ namespace Gloudemans\Shoppingcart\Contracts;
 interface MinRequiredDiscountable extends CouponDiscountable
 {
     /**
-     * Get spend type requirement of discountable eithen amount or quantity
+     * Get spend type requirement of discountable either amount or quantity
      * @return string
      */
     public function getRequiredSpendType();
@@ -23,4 +23,5 @@ interface MinRequiredDiscountable extends CouponDiscountable
      * @return float
      */
     public function getMinRequiredAmount();
+
 }
