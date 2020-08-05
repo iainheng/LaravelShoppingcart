@@ -70,6 +70,9 @@ class MinRequiredItemCoupon extends ProductItemCoupon
 
         $discountableCartItems = $this->getDiscountableCartItems($cart);
         $totalEligibleQuantity = $discountableCartItems->sum('qty');
+        $totalCartItemsAmount = $discountableCartItems->sum(function($item) {
+            return $item->total;
+        });
 
         if ($discountableCartItems->isNotEmpty()) {
             if ($this->percentageDiscount) {
@@ -84,14 +87,26 @@ class MinRequiredItemCoupon extends ProductItemCoupon
                     }
                 }
             } else {
-                foreach ($discountableCartItems as $cartItem) {
-                    $this->applyToCart = false;
+                if ($this->applyOnce) {
+                    foreach ($discountableCartItems as $cartItem) {
+                        $this->applyToCart = false;
 
-                    $valueAfterDivided = $this->value / $totalEligibleQuantity;
+                        $valueAfterDivided = $cartItem->priceTotal / $totalCartItemsAmount * $this->value;
 
-                    $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
+                        $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
 
-                    $cartItem->setCoupon($this);
+                        $cartItem->setCoupon($this);
+                    }
+                } else {
+                    foreach ($discountableCartItems as $cartItem) {
+                        $this->applyToCart = false;
+
+                        $valueAfterDivided = min($this->value, $cartItem->price);
+
+                        $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
+
+                        $cartItem->setCoupon($this);
+                    }
                 }
             }
         }
