@@ -289,20 +289,20 @@ class BuyXGetYCoupon extends ProductItemCoupon
         return $data;
     }
 
-    /**
-     * @param array $options
-     * @return string
-     */
-    public function getDescription(Cart $cart = null, $options = [])
-    {
-        $str = parent::getDescription($cart, $options) . ' for ' . $this->discountable->getDiscountableDescription();
-
-        if ($this->applyOnce) {
-            $str .= ' (once per order)';
-        }
-
-        return $str;
-    }
+//    /**
+//     * @param array $options
+//     * @return string
+//     */
+//    public function getDescription(Cart $cart = null, $options = [])
+//    {
+//        $str = parent::getDescription($cart, $options) . ' for ' . $this->discountable->getDiscountableDescription();
+//
+//        if ($this->applyOnce) {
+//            $str .= ' (once per order)';
+//        }
+//
+//        return $str;
+//    }
 
     /**
      * Get list of cart items that are eligible for discount
