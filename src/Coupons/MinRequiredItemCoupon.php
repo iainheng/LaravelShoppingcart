@@ -91,7 +91,7 @@ class MinRequiredItemCoupon extends ProductItemCoupon
                     foreach ($discountableCartItems as $cartItem) {
                         $this->applyToCart = false;
 
-                        $valueAfterDivided = $cartItem->priceTotal / $totalCartItemsAmount * $this->value;
+                        $valueAfterDivided = $cartItem->price / $totalCartItemsAmount * $this->value;
 
                         $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
 
