@@ -154,13 +154,13 @@ class Cart
      */
     public function addCartItem($item, $keepDiscount = false, $keepTax = false, $dispatchEvent = true)
     {
-//        if (!$keepDiscount) {
-//            $item->setDiscount($this->discount);
-//        }
+        if (!$keepDiscount) {
+            $item->setDiscount($this->discount, true);
+        }
 
-//        if (!$keepTax) {
-//            $item->setTaxRate($this->taxRate);
-//        }
+        if (!$keepTax) {
+            $item->setTaxRate($this->taxRate);
+        }
 
         $items = $this->getItems();
 
@@ -212,14 +212,14 @@ class Cart
             $cartItem->qty = $qty;
         }
 
-        $items = $this->getItems();
+        $content = $this->getItems();
 
         if ($rowId !== $cartItem->rowId) {
             $itemOldIndex = $content->keys()->search($rowId);
 
             $content->pull($rowId);
 
-            if ($items->has($cartItem->rowId)) {
+            if ($content->has($cartItem->rowId)) {
                 $existingCartItem = $this->get($cartItem->rowId);
                 $cartItem->setQuantity($existingCartItem->qty + $cartItem->qty);
             }
@@ -241,7 +241,7 @@ class Cart
 
         $this->events->dispatch('cart.updated', $cartItem);
 
-        $this->session->put($this->instance, $this->getContent()->put('items', $items));
+        $this->session->put($this->instance, $this->getContent()->put('items', $content));
 
         return $cartItem;
     }
@@ -733,7 +733,7 @@ class Cart
      */
     public function countInstances()
     {
-        return $this->getContent()->count();
+        return $this->items()->count();
     }
 
     /**
@@ -1195,6 +1195,19 @@ class Cart
     }
 
     /**
+     * Set the discount rate for the cart item with the given rowId.
+     *
+     * @param string    $rowId
+     * @param int|float $taxRate
+     *
+     * @return void
+     */
+    public function setDiscount($rowId, $discount)
+    {
+        $this->setDiscountRate($rowId, $discount, true);
+    }
+
+    /**
      * Set the global discount percentage for the cart.
      * This will set the discount for all cart items.
      *
@@ -1202,7 +1215,7 @@ class Cart
      *
      * @return void
      */
-    public function setGlobalDiscount($discount, $percentageDiscount = false, $applyOnce = false)
+    public function setGlobalDiscount($discount, $percentageDiscount = true, $applyOnce = false)
     {
         $this->discount = $discount;
 

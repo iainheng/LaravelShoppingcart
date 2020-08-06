@@ -382,7 +382,7 @@ class CartTest extends TestCase
         $cart->update('ea65e0bdcd1967c4b3149e9e780177c0', ['options' => ['color' => 'blue']]);
 
         $this->assertItemsInCart(1, $cart);
-        $this->assertEquals('7e70a1e9aaadd18c72921a07aae5d011', $cart->content()->first()->rowId);
+        $this->assertEquals('7e70a1e9aaadd18c72921a07aae5d011', $cart->items()->first()->rowId);
         $this->assertEquals('blue', $cart->get('7e70a1e9aaadd18c72921a07aae5d011')->options->color);
     }
 
@@ -409,10 +409,10 @@ class CartTest extends TestCase
         $cart->add(new BuyableProduct(), 1, ['color' => 'green']);
         $cart->add(new BuyableProduct(), 1, ['color' => 'blue']);
 
-        $cart->update($cart->content()->values()[1]->rowId, ['options' => ['color' => 'yellow']]);
+        $cart->update($cart->items()->values()[1]->rowId, ['options' => ['color' => 'yellow']]);
 
         $this->assertRowsInCart(3, $cart);
-        $this->assertEquals('yellow', $cart->content()->values()[1]->options->color);
+        $this->assertEquals('yellow', $cart->items()->values()[1]->options->color);
     }
 
     /** @test */
@@ -486,7 +486,7 @@ class CartTest extends TestCase
         $cart->add(new BuyableProduct(1));
         $cart->add(new BuyableProduct(2));
 
-        $content = $cart->content();
+        $content = $cart->items();
 
         $this->assertInstanceOf(Collection::class, $content);
         $this->assertCount(2, $content);
@@ -497,7 +497,7 @@ class CartTest extends TestCase
     {
         $cart = $this->getCart();
 
-        $content = $cart->content();
+        $content = $cart->items();
 
         $this->assertInstanceOf(Collection::class, $content);
         $this->assertCount(0, $content);
@@ -511,7 +511,7 @@ class CartTest extends TestCase
         $cart->add(new BuyableProduct(1));
         $cart->add(new BuyableProduct(2));
 
-        $content = $cart->content();
+        $content = $cart->items();
 
         $this->assertInstanceOf(Collection::class, $content);
         $this->assertEquals([
@@ -526,6 +526,7 @@ class CartTest extends TestCase
                 'options'  => [],
                 'discount' => 0.0,
                 'weight'   => 0.0,
+                'coupon' => null
             ],
             '370d08585360f5c568b18d1f2e4ca1df' => [
                 'rowId'    => '370d08585360f5c568b18d1f2e4ca1df',
@@ -538,6 +539,7 @@ class CartTest extends TestCase
                 'options'  => [],
                 'discount' => 0.0,
                 'weight'   => 0.0,
+                'coupon' => null
             ],
         ], $content->toArray());
     }
@@ -864,7 +866,7 @@ class CartTest extends TestCase
 
         $cart->store($identifier = 123);
 
-        $serialized = serialize($cart->content());
+        $serialized = serialize($cart->items());
 
         $this->assertDatabaseHas('shoppingcart', ['identifier' => $identifier, 'instance' => 'default', 'content' => $serialized]);
 

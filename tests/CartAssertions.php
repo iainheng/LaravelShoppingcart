@@ -28,8 +28,8 @@ trait CartAssertions
      */
     public function assertRowsInCart($rows, Cart $cart)
     {
-        $actual = $cart->content()->count();
+        $actual = $cart->items()->count();
 
-        PHPUnit::assertCount($rows, $cart->content(), "Expected the cart to contain {$rows} rows, but got {$actual}.");
+        PHPUnit::assertCount($rows, $cart->items(), "Expected the cart to contain {$rows} rows, but got {$actual}.");
     }
 }

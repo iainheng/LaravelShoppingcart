@@ -376,7 +376,6 @@ class CartItem implements Arrayable, Jsonable
         $this->name = Arr::get($attributes, 'name', $this->name);
         $this->price = Arr::get($attributes, 'price', $this->price);
         $this->weight = Arr::get($attributes, 'weight', $this->weight);
-        $this->priceTax = $this->price + $this->tax;
         $this->options = new CartItemOptions(Arr::get($attributes, 'options', $this->options));
 
         $this->rowId = $this->generateRowId($this->id, $this->options->all());
@@ -457,12 +456,12 @@ class CartItem implements Arrayable, Jsonable
                 if (isset($this->associatedModel)) {
                     return with(new $this->associatedModel())->find($this->id);
                 }
-                // no break
+            // no break
             case 'modelFQCN':
                 if (isset($this->associatedModel)) {
                     return $this->associatedModel;
                 }
-                // no break
+            // no break
             case 'weightTotal':
                 return round($this->weight * $this->qty, $decimals);
             case 'coupon':
@@ -506,7 +505,8 @@ class CartItem implements Arrayable, Jsonable
 
                     return round($amount, $decimals);
                 case 'taxTotal':
-                case 'taxed':
+                    return round($this->subtotal * ($this->taxRate / 100), $decimals);
+                case 'taxed': // use taxTotal above which coming from upstream
                     return $this->tax * $this->qty;
                 case 'taxable':
                     return ($this->taxIncluded) ? $this->total - $this->taxTotal : $this->subtotal;
