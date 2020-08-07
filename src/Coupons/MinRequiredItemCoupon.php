@@ -76,22 +76,24 @@ class MinRequiredItemCoupon extends ProductItemCoupon
 
         if ($discountableCartItems->isNotEmpty()) {
             if ($this->percentageDiscount) {
-                if ($this->applyOnce) {
-                    $lowestPriceItem = $discountableCartItems->where('priceTax',
-                        $discountableCartItems->min('priceTax'))->first();
-
-                    $this->setDiscountOnItem($lowestPriceItem);
-                } else {
+//                if ($this->applyOnce) {
+//                    $lowestPriceItem = $discountableCartItems->where('price',
+//                        $discountableCartItems->min('price'))->first();
+//
+//                    $this->setDiscountOnItem($lowestPriceItem);
+//                } else {
                     foreach ($discountableCartItems as $cartItem) {
                         $this->setDiscountOnItem($cartItem);
                     }
-                }
+//                }
             } else {
                 if ($this->applyOnce) {
+                    $decimals = config('cart.format.decimals', 2);
+
                     foreach ($discountableCartItems as $cartItem) {
                         $this->applyToCart = false;
 
-                        $valueAfterDivided = $cartItem->price / $totalCartItemsAmount * $this->value;
+                        $valueAfterDivided = round($cartItem->price / $totalCartItemsAmount * $this->value, $decimals);
 
                         $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
 
