@@ -32,6 +32,8 @@ class CartFee extends CartItem implements Arrayable, Jsonable
      */
     public function __construct($id, $type, $name, $price, $description = '', $weight = 0, array $options = [])
     {
+        parent::__construct($id, $name, $price, $weight, $options);
+
         if (empty($type)) {
             throw new \InvalidArgumentException('Please supply a valid type.');
         }
@@ -124,7 +126,6 @@ class CartFee extends CartItem implements Arrayable, Jsonable
         $this->price = Arr::get($attributes, 'price', $this->price);
         $this->description = Arr::get($attributes, 'description', $this->description);
         $this->weight = Arr::get($attributes, 'weight', $this->weight);
-        $this->priceTax = $this->price + $this->tax;
         $this->options = new CartItemOptions(Arr::get($attributes, 'options', $this->options));
 
         $this->rowId = $this->generateRowId($this->id, $this->options->all());
