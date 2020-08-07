@@ -111,17 +111,18 @@ class OrderCoupon extends CartCoupon
     {
         $str = parent::getDescription($cart, $options);
 
-        if ($this->discountable) {
+        if ($this->discountable && $this->discountable->getRequiredSpendType()) {
             $requiredAmount = $this->discountable->getMinRequiredAmount();
             $requiredQuantity = $this->discountable->getMinRequiredQuantity();
             $requiredAmountMode = $this->discountable->getRequiredSpendType() == 'amount';
 
             if ($requiredAmountMode) {
-                $str .= ' for orders above RM ' . $this->numberFormat($requiredAmount) . '.';
+                $str .= ($requiredAmount > 0) ? ' for orders above RM ' . $this->numberFormat($requiredAmount) . '.' : ' for all orders';
             } else {
                 $str .= ' for orders with minimum quantity of ' . $requiredQuantity . '.';
             }
         } else {
+            // all below are now deprecated and will be remove in the future.
             $validValueFrom = $this->options->get('valid_value');
 
             if (is_numeric($validValueFrom)) {

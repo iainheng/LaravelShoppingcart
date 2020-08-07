@@ -44,17 +44,40 @@ class ProductItemCoupon extends CartCoupon
     {
         $this->validate($cart);
 
+        $requiredAmount = $this->discountable->getMinRequiredAmount();
+
         $discountableCartItems = $this->getDiscountableCartItems($cart);
+
+        $totalCartItemsAmount = $discountableCartItems->sum(function($item) {
+            return $item->total;
+        });
+
+        if (!is_null($requiredAmount)) {
+            $this->checkMinAmount($cart, $requiredAmount);
+        }
 
         if ($discountableCartItems->isEmpty() && $throwErrors) {
             throw new CouponException("Your cart does not contain items from " . $this->discountable->getDiscountableDescription());
         }
 
         if ($discountableCartItems->isNotEmpty()) {
-            if ($this->applyOnce) {
-                $lowestPriceItem = $discountableCartItems->where('priceTax', $discountableCartItems->min('priceTax'))->first();
+            if (!$this->percentageDiscount && $this->applyOnce) {
+//                $lowestPriceItem = $discountableCartItems->where('price', $discountableCartItems->min('price'))->first();
+//
+//                $this->setDiscountOnItem($lowestPriceItem);
 
-                $this->setDiscountOnItem($lowestPriceItem);
+                // we split the total discount amount
+                $decimals = config('cart.format.decimals', 2);
+
+                foreach ($discountableCartItems as $cartItem) {
+                    $this->applyToCart = false;
+
+                    $valueAfterDivided = round($cartItem->price / $totalCartItemsAmount * $this->value, $decimals);
+
+                    $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
+
+                    $cartItem->setCoupon($this);
+                }
             } else {
                 foreach ($discountableCartItems as $cartItem) {
                     $this->setDiscountOnItem($cartItem);
@@ -74,15 +97,15 @@ class ProductItemCoupon extends CartCoupon
         $discountableCartItems = $this->getDiscountableCartItems($cart);
 
         if ($discountableCartItems->isNotEmpty()) {
-            if ($this->applyOnce) {
-                $lowestPriceItem = $discountableCartItems->where('priceTax', $discountableCartItems->min('priceTax'))->first();
-
-                $this->removeDiscountOnItem($lowestPriceItem);
-            } else {
+//            if ($this->applyOnce) {
+//                $lowestPriceItem = $discountableCartItems->where('price', $discountableCartItems->min('price'))->first();
+//
+//                $this->removeDiscountOnItem($lowestPriceItem);
+//            } else {
                 foreach ($discountableCartItems as $cartItem) {
                     $this->removeDiscountOnItem($cartItem);
                 }
-            }
+//            }
         }
     }
 
@@ -145,6 +168,12 @@ class ProductItemCoupon extends CartCoupon
      */
     protected function getDiscountableCartItems(Cart $cart)
     {
+        $discountableIds = $this->discountable->getDiscountableIdentifiers();
+
+        // if discountable is keyword * which means we discount every item in cart
+        if ($discountableIds->count() == 1 && $discountableIds->first() == '*')
+            return $cart->items();
+
         return $cart->search(function (CartItem $cartItem) {
             return in_array($cartItem->id, $this->discountable->getDiscountableIdentifiers()->all());
         });
@@ -156,7 +185,7 @@ class ProductItemCoupon extends CartCoupon
      */
     public function getDescription(Cart $cart = null, $options = [])
     {
-        $str = parent::getDescription($cart, $options) . ' for ' . $this->discountable->getDiscountableDescription();
+        $str = parent::getDescription($cart, $options) . $this->discountable->getDiscountableDescription();
 
         if ($this->applyOnce)
             $str .= ' (once per order)';
