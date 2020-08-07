@@ -38,6 +38,9 @@ class BuyXGetYCoupon extends ProductItemCoupon
 
         $requiredCartItems = $this->getRequiredCartItems($cart);
         $requiredCartItemsQty = $requiredCartItems->sum('qty');
+        $requiredCartItemsAmount = $requiredCartItems->sum(function ($cartItem) {
+            return $cartItem->priceTotal;
+        });
 
         $discountableCartItems = $this->getDiscountableCartItems($cart);
         $discountableCartItemsQty = $discountableCartItems->sum('qty');
@@ -72,7 +75,7 @@ class BuyXGetYCoupon extends ProductItemCoupon
 
         if ((!$requiredAmountMode &&
                 ($requiredCartItemsQty < $requiredQuantity || $requiredCartItemsQty + ($discountableCartItemsQty - $discountPriceQty) < $fullPriceQty)) ||
-            ($requiredAmountMode && !$requiredCartItems->sum('priceTax') >= $requiredAmount)) {
+            ($requiredAmountMode && !($requiredCartItemsAmount >= $requiredAmount))) {
             throw new CouponException("Your cart items does not meet requirements of this discount.");
         }
 
@@ -225,15 +228,8 @@ class BuyXGetYCoupon extends ProductItemCoupon
         $discountableCartItems = $this->getDiscountableCartItems($cart);
 
         if ($discountableCartItems->isNotEmpty()) {
-            if ($this->applyOnce) {
-                $lowestPriceItem = $discountableCartItems->where('priceTax',
-                    $discountableCartItems->min('priceTax'))->first();
-
-                $this->removeDiscountOnItem($lowestPriceItem);
-            } else {
-                foreach ($discountableCartItems as $cartItem) {
-                    $this->removeDiscountOnItem($cartItem);
-                }
+            foreach ($discountableCartItems as $cartItem) {
+                $this->removeDiscountOnItem($cartItem);
             }
         }
     }
