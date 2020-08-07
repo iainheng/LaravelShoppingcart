@@ -80,7 +80,7 @@ class ProductCoupon extends CartCoupon
 
         if ($discountableCartItems->isNotEmpty()) {
             if ($this->applyOnce) {
-                $lowestPriceItem = $discountableCartItems->where('priceTax', $discountableCartItems->min('priceTax'))->first();
+                $lowestPriceItem = $discountableCartItems->where('price', $discountableCartItems->min('price'))->first();
 
                 $amount = $this->forItem($lowestPriceItem);
             } else {
@@ -133,7 +133,7 @@ class ProductCoupon extends CartCoupon
             $discountableCartItems = $this->getDiscountableCartItems($cart);
             $str = $discountableCartItems->count() . ' x ' . $str;
         }
-        
+
         return $str;
     }
 }

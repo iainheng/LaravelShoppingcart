@@ -129,7 +129,7 @@ abstract class CartCoupon implements Arrayable, Jsonable, Couponable
      */
     public function displayValue()
     {
-        return ($this->percentageDiscount) ? $this->numberFormat($this->value, 0) . '%' : 'RM' . $this->value;
+        return ($this->percentageDiscount) ? $this->numberFormat($this->value, 0) . '%' : 'RM ' . $this->value;
     }
 
     /**
