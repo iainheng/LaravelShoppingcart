@@ -66,12 +66,18 @@ class BuyXGetYCoupon extends ProductItemCoupon
             $totalEligibleCartItemsQty = $requiredCartItemsQty * 2;
         }
 
-//        dump($requiredQuantity, $receivedQuantity, $totalEligibleCartItemsQty);
-
         list($fullPriceQty, $discountPriceQty) = $this->getFullAndDiscountQuantityBreakdown($requiredQuantity,
             $receivedQuantity, $totalEligibleCartItemsQty);
 
-//        dump($fullPriceQty, $discountPriceQty);
+//        dump([
+//            '$requiredQuantity' => $requiredQuantity,
+//            '$requiredCartItemsQty' => $requiredCartItemsQty,
+//            '$requiredAmount' => $requiredAmount,
+//            '$requiredCartItemsAmount' => $requiredCartItemsAmount,
+//            '$discountableCartItemsQty' => $discountableCartItemsQty,
+//            '$discountPriceQty' => $discountPriceQty,
+//            '$fullPriceQty' => $fullPriceQty,
+//        ]);
 
         if ((!$requiredAmountMode &&
                 ($requiredCartItemsQty < $requiredQuantity || $requiredCartItemsQty + ($discountableCartItemsQty - $discountPriceQty) < $fullPriceQty)) ||
@@ -203,13 +209,22 @@ class BuyXGetYCoupon extends ProductItemCoupon
 //
 //            $py = max(0, $r - $requiredQty) + ($n * $receivedQty);
 //            $px = $totalQty - $py;
+        $requiredAmount = $this->discountable->getMinRequiredAmount();
+        $requiredAmountMode = is_numeric($requiredAmount);
+        $receivedQuantity = $this->discountable->getReceiveQuantity();
 
-        $pack = $requiredQty + $receivedQty;
-        $buyPacks = floor($totalQty / $pack);
-        $buyIndividual = $totalQty % $pack;
+        // if requirement is a min spend amount, then we just discount total number of receive quantity
+        if ($requiredAmountMode) {
+            $px = max($totalQty - $receivedQuantity, 0);
+            $py = $receivedQty;
+        } else {
+            $pack = $requiredQty + $receivedQty;
+            $buyPacks = floor($totalQty / $pack);
+            $buyIndividual = $totalQty % $pack;
 
-        $px = $requiredQty * $buyPacks + $buyIndividual;
-        $py = $totalQty - $px;
+            $px = $requiredQty * $buyPacks + $buyIndividual;
+            $py = $totalQty - $px;
+        }
 
         return [
             $px,
@@ -308,6 +323,12 @@ class BuyXGetYCoupon extends ProductItemCoupon
      */
     protected function getRequiredCartItems(Cart $cart)
     {
+        $requiredDiscountableIds = $this->discountable->getDiscountableRequiredIdentifiers();
+
+        // if discountable is keyword * which means any item in cart is eligible
+        if ($requiredDiscountableIds->count() == 1 && $requiredDiscountableIds->first() == '*')
+            return $cart->items();
+
         return $cart->search(function (CartItem $cartItem) {
             return in_array($cartItem->id, $this->discountable->getDiscountableRequiredIdentifiers()->all());
         });
