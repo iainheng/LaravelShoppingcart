@@ -11,6 +11,7 @@ use Gloudemans\Shoppingcart\Exceptions\CartAlreadyStoredException;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Gloudemans\Shoppingcart\Exceptions\CouponNotFoundException;
 use Gloudemans\Shoppingcart\Exceptions\InvalidRowIDException;
+use Gloudemans\Shoppingcart\Exceptions\NoAmountToDiscountException;
 use Gloudemans\Shoppingcart\Exceptions\UnknownModelException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
@@ -653,12 +654,12 @@ class Cart
         }
 
         if ($this->totalFloat() <= 0) {
-            throw new CouponException('Cannot further discount on your cart total.');
+            throw new NoAmountToDiscountException('Cannot further discount on your cart total.');
         }
 
         $coupon->apply($this);
 
-        if ($coupon->isApplyToCart() && $coupon->discount($this, false)) {
+        if ($coupon->isApplyToCart() && $coupon->discount($this)) {
             $coupons = $this->coupons();
 
             $coupons->put($coupon->getCode(), $coupon);
@@ -817,7 +818,7 @@ class Cart
 
         foreach ($this->coupons() as $coupon) {
 //            if ($coupon->appliedToCart) {
-            $total += $coupon->discount($this);
+            $total += $coupon->discount($this, false);
 //            }
         }
 
@@ -1105,6 +1106,17 @@ class Cart
     public function searchFee(Closure $search)
     {
         return $this->fees()->filter($search);
+    }
+
+    /**
+     * Search the cart content for a cart coupon matching the given search closure.
+     *
+     * @param Closure $search
+     * @return Collection
+     */
+    public function searchCoupon(Closure $search)
+    {
+        return $this->allCoupons()->filter($search);
     }
 
     /**

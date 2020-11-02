@@ -121,4 +121,10 @@ class ShippingCoupon extends CartCoupon
 
         return 'Free shipping'. (!empty($discountableDescription) ? ' to ' . $discountableDescription : '');
     }
+
+    /**@inheritdoc */
+    public function isShipping()
+    {
+        return true;
+    }
 }

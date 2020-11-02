@@ -109,4 +109,11 @@ interface Couponable
      * @return void
      */
     public function cleanBeforeSave();
+
+    /**
+     * Check if coupon is shipping type
+     *
+     * @return bool
+     */
+    public function isShipping();
 }

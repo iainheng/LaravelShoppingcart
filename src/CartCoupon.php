@@ -5,6 +5,7 @@ namespace Gloudemans\Shoppingcart;
 use Carbon\Carbon;
 use Gloudemans\Shoppingcart\Contracts\Couponable;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
+use Gloudemans\Shoppingcart\Exceptions\NoAmountToDiscountException;
 use Gloudemans\Shoppingcart\Traits\CouponTrait;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
@@ -116,6 +117,9 @@ abstract class CartCoupon implements Arrayable, Jsonable, Couponable
     {
         try {
             $this->validate($cart);
+        } catch (NoAmountToDiscountException $noAmountToDiscountException) {
+            if ($throwErrors)
+                throw $noAmountToDiscountException;
         } catch (CouponException $ce) {
             if ($throwErrors)
                 throw $ce;
@@ -186,5 +190,11 @@ abstract class CartCoupon implements Arrayable, Jsonable, Couponable
         }
 
         return number_format($value, $decimals, $decimalPoint, $thousandSeperator);
+    }
+
+    /**@inheritdoc */
+    public function isShipping()
+    {
+        return false;
     }
 }
