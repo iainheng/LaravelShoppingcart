@@ -313,6 +313,14 @@ class Cart
     }
 
     /**
+     * Delete all items in cart
+     */
+    public function clearItems()
+    {
+        $this->session->put($this->instance, $this->getContent()->put('items', collect()));
+    }
+
+    /**
      * Get the content of the cart.
      *
      * @return \Illuminate\Support\Collection
