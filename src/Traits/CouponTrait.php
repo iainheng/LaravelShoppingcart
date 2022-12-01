@@ -43,7 +43,9 @@ trait CouponTrait
      * @throws CouponException
      */
     public function apply(Cart $cart, $throwErrors = true)
-    {}
+    {
+        $this->validate($cart);
+    }
 
     /**
      * Forget current coupon discount to cart or cart items that revert changes to cart or cart items amount
