@@ -72,7 +72,7 @@ class OrderCoupon extends CartCoupon
         $validValueFrom = $this->options->get('valid_value');
 
         if (is_numeric($validValueFrom))
-            $this->checkMinAmount($cart, $validValueFrom);
+            $this->checkMinAmount($cart, $validValueFrom, $throwErrors);
 
 //            throw new CouponException(ucfirst(config('cart.discount.coupon_label')) . ' only applicable for order value equal or above '. $this->numberFormat($validValueFrom));
 
