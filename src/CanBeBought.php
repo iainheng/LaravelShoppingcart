@@ -19,12 +19,20 @@ trait CanBeBought
      *
      * @return string
      */
-    public function getBuyableDescription($options = null)
+    public function getBuyableName($options = null)
     {
         if (property_exists($this, 'name')) {
             return $this->name;
         }
+    }
 
+    /**
+     * Get the name, title or description of the Buyable item.
+     *
+     * @return string
+     */
+    public function getBuyableDescription($options = null)
+    {
         if (property_exists($this, 'title')) {
             return $this->title;
         }
