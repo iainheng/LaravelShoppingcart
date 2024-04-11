@@ -1022,7 +1022,7 @@ class Cart
      */
     public function priceTotalFloat()
     {
-        return $this->getContent()->reduce(function ($initial, CartItem $cartItem) {
+        return $this->getItems()->reduce(function ($initial, CartItem $cartItem) {
             return $initial + $cartItem->priceTotal;
         }, 0);
     }
