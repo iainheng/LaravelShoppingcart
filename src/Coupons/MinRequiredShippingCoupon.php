@@ -36,16 +36,23 @@ class MinRequiredShippingCoupon extends ShippingCoupon
         parent::validate($cart);
 
         $requiredAmount = $this->discountable->getMinRequiredAmount();
-        $requiredAmountMode = true;
+        $requiredAmountMode = is_numeric($requiredAmount);
+        $requiredQuantity = $this->discountable->getMinRequiredQuantity();
+        $requiredQuantityMode = is_numeric($requiredQuantity);
 
         $shippingTotal = $cart->shippingFloat();
         $orderTotal = $cart->itemsTotal();
+        $orderItemsQuantity = $cart->items()->sum('qty');
 
         if ($shippingTotal <= 0) {
             throw new NoAmountToDiscountException("Cart does not contain any shipping cost.");
         }
 
         if (($requiredAmountMode && $orderTotal < $requiredAmount)) {
+            throw new CouponException("Your cart items does not meet requirements of this discount.");
+        }
+
+        if (($requiredQuantityMode && $orderItemsQuantity < $requiredQuantity)) {
             throw new CouponException("Your cart items does not meet requirements of this discount.");
         }
 
