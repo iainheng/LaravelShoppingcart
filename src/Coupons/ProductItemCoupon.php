@@ -70,17 +70,23 @@ class ProductItemCoupon extends CartCoupon
                 $decimals = config('cart.format.decimals', 2);
 
                 foreach ($discountableCartItems as $cartItem) {
-                    $this->applyToCart = false;
+                    // prevent override previous coupon if it was discounted before
+                    if (!$cartItem->coupon) {
+                        $this->applyToCart = false;
 
-                    $valueAfterDivided = round($cartItem->price / $totalCartItemsAmount * $this->value, $decimals);
+                        $valueAfterDivided = round($cartItem->price / $totalCartItemsAmount * $this->value, $decimals);
 
-                    $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
+                        $cartItem->setDiscount($valueAfterDivided, $this->percentageDiscount, $this->applyOnce);
 
-                    $cartItem->setCoupon($this);
+                        $cartItem->setCoupon($this);
+                    }
                 }
             } else {
                 foreach ($discountableCartItems as $cartItem) {
-                    $this->setDiscountOnItem($cartItem);
+                    // prevent override previous coupon if it was discounted before
+                    if (!$cartItem->coupon) {
+                        $this->setDiscountOnItem($cartItem);
+                    }
                 }
             }
         }
@@ -103,7 +109,9 @@ class ProductItemCoupon extends CartCoupon
 //                $this->removeDiscountOnItem($lowestPriceItem);
 //            } else {
                 foreach ($discountableCartItems as $cartItem) {
-                    $this->removeDiscountOnItem($cartItem);
+                    if ($cartItem->coupon->code == $this->getCode()) {
+                        $this->removeDiscountOnItem($cartItem);
+                    }
                 }
 //            }
         }
@@ -141,7 +149,7 @@ class ProductItemCoupon extends CartCoupon
         parent::discount($cart, $throwErrors);
 
         return $cart->items()->reduce(function ($total, CartItem $cartItem) {
-            return $total + $cartItem->discountTotal;
+            return $total + (($cartItem->coupon == $this) ? $cartItem->discountTotal : 0);
         }, 0);
     }
 
