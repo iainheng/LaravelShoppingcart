@@ -7,10 +7,12 @@ use Closure;
 use Gloudemans\Shoppingcart\Contracts\Buyable;
 use Gloudemans\Shoppingcart\Contracts\Couponable;
 use Gloudemans\Shoppingcart\Contracts\InstanceIdentifier;
+use Gloudemans\Shoppingcart\Contracts\Memberable;
 use Gloudemans\Shoppingcart\Exceptions\CartAlreadyStoredException;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Gloudemans\Shoppingcart\Exceptions\CouponNotFoundException;
 use Gloudemans\Shoppingcart\Exceptions\InvalidRowIDException;
+use Gloudemans\Shoppingcart\Exceptions\MemberException;
 use Gloudemans\Shoppingcart\Exceptions\NoAmountToDiscountException;
 use Gloudemans\Shoppingcart\Exceptions\UnknownModelException;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -179,7 +181,15 @@ class Cart
             $this->events->dispatch('cart.added', $item);
         }
 
+
         $this->session->put($this->instance, $this->getContent()->put('items', $items));
+
+
+        $member = $this->member();
+
+        if ($member) {
+            $member->apply($this);
+        }
 
 ////        if ($newItem) {
 //            // reapply coupons
@@ -832,6 +842,17 @@ class Cart
 
         return $total;
     }
+
+    /**
+     * @return float
+     */
+    public function memberDiscountFloat()
+    {
+        return $this->items()->reduce(function ($total, CartItem $cartItem) {
+            return $total + $cartItem->memberDiscountTotal;
+        }, 0);
+    }
+
 
     /**
      * Get total discountable amount
@@ -1560,5 +1581,52 @@ class Cart
     public function updatedAt()
     {
         return $this->updatedAt;
+    }
+
+    /**
+     * Get member instance of the cart
+     *
+     * @return \Gloudemans\Shoppingcart\Contracts\Memberable
+     */
+    public function member()
+    {
+        return $this->getContent()->get('member');
+    }
+
+    /**
+     * Aadd member to the cart and throw exception if requirments is not met
+     *
+     * @param Memberable $memberable
+     * @return Memberable
+     * @throws MemberException
+     */
+    public function addMember(Memberable $memberable)
+    {
+        $memberable->apply($this);
+
+
+        $this->session->put($this->instance, $this->getContent()->put('member', $memberable));
+
+
+        $this->events->dispatch('cart.member_added', $memberable);
+
+
+        return $memberable;
+    }
+
+    /**
+     * Remove member from the cart.
+     *
+     * @return void
+     */
+    public function removeMember()
+    {
+        $member = $this->member();
+
+        $member->forget($this);
+
+        $this->session->put($this->instance, $this->getContent()->put('member', null));
+
+        $this->events->dispatch('cart.member_removed', $member);
     }
 }

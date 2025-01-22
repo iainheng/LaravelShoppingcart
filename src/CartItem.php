@@ -4,6 +4,7 @@ namespace Gloudemans\Shoppingcart;
 
 use Gloudemans\Shoppingcart\Contracts\Buyable;
 use Gloudemans\Shoppingcart\Contracts\Couponable;
+use Gloudemans\Shoppingcart\Contracts\Memberable;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
@@ -14,8 +15,10 @@ use Illuminate\Support\Arr;
  *
  * @package Gloudemans\Shoppingcart
  * @property Couponable $coupon
- * @property-read mixed discount
+ * @property-read float discount
  * @property-read float discountTotal
+ * @property-read float memberDiscount
+ * @property-read float memberDiscountTotal
  * @property-read float priceTarget
  * @property-read float priceNet
  * @property-read float priceTotal
@@ -116,6 +119,23 @@ class CartItem implements Arrayable, Jsonable
      * @var CartCoupon
      */
     private $coupon;
+
+    /**
+     * @var Memberable
+     */
+    private $memberable;
+
+    /**
+     * The discount rate for the cart item.
+     *
+     * @var ?float
+     */
+    private $memberDiscountRate = null;
+
+    /**
+     * @var bool
+     */
+    private $memberPercentageDiscount = false;
 
     /**
      * CartItem constructor.
@@ -349,6 +369,48 @@ class CartItem implements Arrayable, Jsonable
     }
 
     /**
+     * Apply member discount to item
+     *
+     * @param float $amount
+     * @param bool $percentageDiscount
+     * @param bool $applyOnce
+     * @throws CouponException
+     */
+    protected function setMemberDiscount($amount, $percentageDiscount = false)
+    {
+        $this->memberPercentageDiscount = $percentageDiscount;
+
+        if ($this->memberPercentageDiscount && ($amount < 0 || $amount > 100))
+            throw new CouponException('Invalid value for a percentage discount. The value must be between 1 and 100.');
+
+        $this->memberDiscountRate = $amount;
+    }
+
+    /**
+     * Attach member to current item
+     *
+     * @param Memberable $memberable
+     * @param float $amount
+     * @param bool $percentageDiscount
+     */
+    public function setMember(Memberable $memberable, $amount, $percentageDiscount = false)
+    {
+        $this->setMemberDiscount($amount, $percentageDiscount);
+
+        $this->memberable = $memberable;
+    }
+
+    /**
+     * Remove discount and coupon attached
+     */
+    public function removeMember()
+    {
+        $this->memberDiscountRate = null;
+
+        $this->memberable = null;
+    }
+
+    /**
      * Update the cart item from a Buyable.
      *
      * @param \Gloudemans\Shoppingcart\Contracts\Buyable $item
@@ -475,12 +537,18 @@ class CartItem implements Arrayable, Jsonable
                     return round($this->price / (1 + ($this->taxRate / 100)), $decimals);
                 case 'discount':
                     return $this->priceNet * ($this->discountRate / 100);
+                case 'memberDiscount':
+                    return $this->priceNet * ($this->memberDiscountRate / 100);
                 case 'tax':
                     return round($this->priceTarget * ($this->taxRate / 100), $decimals);
                 case 'priceTax':
                     return round($this->priceTarget + $this->tax, $decimals);
                 case 'discountTotal':
-                    return round($this->discount * $this->qty, $decimals);
+                    return round($this->discount * $this->qty, $decimals) + $this->memberDiscountTotal;
+                case 'memberDiscountTotal':
+                    return round($this->memberDiscount * $this->qty, $decimals);
+                case 'allDiscountTotal':
+                    return $this->discountTotal + $this->memberDiscountTotal;
                 case 'priceTotal':
                     return round($this->priceNet * $this->qty, $decimals);
                 case 'subtotal':
@@ -497,7 +565,9 @@ class CartItem implements Arrayable, Jsonable
         } else {
             switch ($attribute) {
                 case 'discount':
-                    return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : $this->discountRate;
+                    return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : min($this->price - $this->memberDiscount, $this->discountRate);
+                case 'memberDiscount':
+                    return ($this->memberPercentageDiscount) ? ($this->price * ($this->memberDiscountRate / 100)) : $this->memberDiscountRate;
                 case 'tax':
                     $amount = ($this->taxIncluded) ?
                         calc_tax_amount($this->priceTarget, $this->taxRate, $this->taxIncluded) :
@@ -513,14 +583,20 @@ class CartItem implements Arrayable, Jsonable
                 case 'priceTax':
                     $amount = ($this->taxIncluded) ? $this->priceTarget : $this->priceTarget + $this->tax;
                     return round($amount, $decimals);
+                case 'memberDiscountTotal':
+                    return round($this->memberDiscount * $this->qty, $decimals);
                 case 'discountTotal':
                     return round($this->discount * $this->qty, $decimals);
+                case 'allDiscountTotal':
+                    return $this->discountTotal + $this->memberDiscountTotal;
                 case 'priceTotal':
                     return round($this->price * $this->qty, $decimals);
+                case 'subtotalWithoutDiscount':
+                    return max(round($this->priceTotal - $this->memberDiscountTotal, $decimals), 0);
                 case 'subtotal':
-                    return max(round($this->priceTotal - $this->discountTotal, $decimals), 0);
+                    return max(round($this->priceTotal - $this->allDiscountTotal, $decimals), 0);
                 case 'priceTarget':
-                    return max(round(($this->priceTotal - $this->discountTotal) / $this->qty, $decimals), 0);
+                    return max(round(($this->priceTotal - $this->allDiscountTotal) / $this->qty, $decimals), 0);
                 case 'total':
                     return round($this->subtotal + $this->taxTotal, $decimals);
                 default:
@@ -604,7 +680,9 @@ class CartItem implements Arrayable, Jsonable
             'discount' => $this->discount,
             'tax'      => $this->tax,
             'subtotal' => $this->subtotal,
-            'coupon'   => optional($this->coupon)->toArray()
+            'coupon'   => optional($this->coupon)->toArray(),
+            'memberDiscount' => $this->memberDiscount,
+            'memberable' => optional($this->memberable)->toArray(),
         ];
     }
 
