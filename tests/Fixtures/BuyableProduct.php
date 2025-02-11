@@ -27,18 +27,24 @@ class BuyableProduct implements Buyable
     private $weight;
 
     /**
+     * @var string
+     */
+    private $description;
+
+    /**
      * BuyableProduct constructor.
      *
      * @param int|string $id
      * @param string     $name
      * @param float      $price
      */
-    public function __construct($id = 1, $name = 'Item name', $price = 10.00, $weight = 0)
+    public function __construct($id = 1, $name = 'Item name', $price = 10.00, $weight = 0, $description = null)
     {
         $this->id = $id;
         $this->name = $name;
         $this->price = $price;
         $this->weight = $weight;
+        $this->description = is_null($description) ? $name : $description;
     }
 
     /**
@@ -58,7 +64,7 @@ class BuyableProduct implements Buyable
      */
     public function getBuyableDescription($options = null)
     {
-        return $this->name;
+        return $this->description;
     }
 
     /**
@@ -79,5 +85,29 @@ class BuyableProduct implements Buyable
     public function getBuyableWeight($options = null)
     {
         return $this->weight;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getBuyableName($options = null)
+    {
+        return $this->name;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getBuyableImageUrl($options = null)
+    {
+        return '';
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isBuyableHasStock($qtyRequired = 1)
+    {
+        return true;
     }
 }

@@ -8,6 +8,7 @@ use Gloudemans\Shoppingcart\Contracts\Buyable;
 use Gloudemans\Shoppingcart\Contracts\Couponable;
 use Gloudemans\Shoppingcart\Contracts\InstanceIdentifier;
 use Gloudemans\Shoppingcart\Contracts\Memberable;
+use Gloudemans\Shoppingcart\Contracts\Voucherable;
 use Gloudemans\Shoppingcart\Exceptions\CartAlreadyStoredException;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Gloudemans\Shoppingcart\Exceptions\CouponNotFoundException;
@@ -394,6 +395,24 @@ class Cart
         });
 
         return $coupons->merge($cartItemCoupons);
+    }
+
+    /**
+     * Get all vouchers applied in items
+     *
+     * @return Collection
+     */
+    public function allVouchers()
+    {
+        $cartItemVouchers = $this->items()->map(function (CartItem $cartItem) {
+            return $cartItem->getVouchers();
+        })->collapse()->unique(function (Voucherable $voucherable) {
+            return $voucherable->getCode();
+        })->keyBy(function (Voucherable $voucherable) {
+            return $voucherable->getCode();
+        });
+
+        return $cartItemVouchers;
     }
 
     /**
@@ -1628,5 +1647,77 @@ class Cart
         $this->session->put($this->instance, $this->getContent()->put('member', null));
 
         $this->events->dispatch('cart.member_removed', $member);
+    }
+
+    /**
+     * Apply a voucher to cart item
+     *
+     * @param string $rowId
+     * @param Voucherable $voucher
+     * @return CartItem
+     * @throws \Exception
+     */
+    public function applyVoucherToItem($rowId, Voucherable $voucher)
+    {
+        $item = $this->get($rowId);
+        $currentQty = $item->qty;
+
+        $totalVoucherQty = $item->getVouchersTotalDiscountQuantity();
+
+//        dump($item->name . ': ' . $totalVoucherQty);
+//        dump($item->name . ': ' . $currentQty);
+
+        // Calculate the remaining quantity that can be discounted
+        $remainingQty = $currentQty - $totalVoucherQty;
+
+        if ($remainingQty > 0) {
+            // If the voucher quantity exceeds the remaining quantity, cap it to the remaining quantity
+            if ($voucher->getDiscountQuantity() > $remainingQty) {
+                $voucher->setDiscountQuantity($remainingQty);
+            }
+
+            $item->applyVoucher($voucher);
+
+            $this->update($rowId, $item->qty);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get single voucher discount amount across all applied items
+     *
+     * @param string $voucherCode
+     * @return float
+     */
+    public function getVoucherTotalDiscountAmount($voucherCode)
+    {
+        return collect($this->items())->sum(function (CartItem $item) use ($voucherCode) {
+            return $item->getVoucherTotalDiscountAmount($voucherCode);
+        });
+    }
+
+    public function removeVoucher($voucherCode)
+    {
+        foreach ($this->items() as $item) {
+            $this->removeVoucherFromItem($item->rowId, $voucherCode);
+        }
+
+    }
+
+
+    /**
+     * @param string $rowId
+     * @param string $voucherCode
+     * @return void
+     */
+    protected function removeVoucherFromItem($rowId, $voucherCode)
+    {
+        $item = $this->get($rowId);
+        $item->removeVoucher($voucherCode);
+
+        $this->update($rowId, $item->qty);
     }
 }

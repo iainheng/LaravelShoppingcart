@@ -5,6 +5,7 @@ namespace Gloudemans\Shoppingcart;
 use Gloudemans\Shoppingcart\Contracts\Buyable;
 use Gloudemans\Shoppingcart\Contracts\Couponable;
 use Gloudemans\Shoppingcart\Contracts\Memberable;
+use Gloudemans\Shoppingcart\Contracts\Voucherable;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
@@ -19,7 +20,10 @@ use Illuminate\Support\Arr;
  * @property-read float discountTotal
  * @property-read float memberDiscount
  * @property-read float memberDiscountTotal
+ * @property-read float voucherDiscountTotal
+ * @property-read float allDiscountTotal
  * @property-read float priceTarget
+ * @property-read float priceMember
  * @property-read float priceNet
  * @property-read float priceTotal
  * @property-read float subtotal
@@ -119,6 +123,8 @@ class CartItem implements Arrayable, Jsonable
      * @var CartCoupon
      */
     private $coupon;
+
+    protected $vouchers = [];
 
     /**
      * @var Memberable
@@ -410,6 +416,23 @@ class CartItem implements Arrayable, Jsonable
         $this->memberable = null;
     }
 
+    public function applyVoucher(Voucherable $voucher)
+    {
+        $this->vouchers[] = $voucher;
+    }
+
+    public function removeVoucher($voucherCode)
+    {
+        $this->vouchers = array_filter($this->vouchers, function ($voucher) use ($voucherCode) {
+            return $voucher->getCode() !== $voucherCode;
+        });
+    }
+
+    public function getVouchers()
+    {
+        return $this->vouchers;
+    }
+
     /**
      * Update the cart item from a Buyable.
      *
@@ -500,6 +523,82 @@ class CartItem implements Arrayable, Jsonable
     }
 
     /**
+     * Get all vouchers discount amount
+     *
+     * @return float
+     */
+    public function getVouchersDiscountAmount()
+    {
+        return array_reduce($this->vouchers, function ($carry, Voucherable $voucher) {
+            if ($voucher->isPercentage()) {
+                $discountPerItem = $this->priceMember * ($voucher->getDiscountValue() / 100);
+            } else {
+                $discountPerItem = $voucher->getDiscountValue();
+            }
+
+            return $carry + ($discountPerItem * $voucher->getDiscountQuantity());
+        }, 0);
+    }
+
+    /**
+     * Get voucher discount amount before multiple with apply quantity
+     *
+     * @param string $voucherCode
+     *
+     * @return float|int
+     */
+    public function getVoucherDiscountAmount($voucherCode)
+    {
+        foreach ($this->vouchers as $voucher) {
+            if ($voucher->getCode() === $voucherCode) {
+                if ($voucher->isPercentage()) {
+                    $discountPerItem = $this->priceMember * ($voucher->getDiscountValue() / 100);
+                } else {
+                    $discountPerItem = $voucher->getDiscountValue();
+                }
+
+                return $discountPerItem;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get single voucher discount amount
+     * @param string $voucherCode
+     * @return float
+     */
+    public function getVoucherTotalDiscountAmount($voucherCode)
+    {
+        foreach ($this->vouchers as $voucher) {
+            if ($voucher->getCode() === $voucherCode) {
+                if ($voucher->isPercentage()) {
+                    $discountPerItem = $this->priceMember * ($voucher->getDiscountValue() / 100);
+                } else {
+                    $discountPerItem = $voucher->getDiscountValue();
+                }
+
+                return $discountPerItem * $voucher->getDiscountQuantity();
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get total quantity from all vouchers
+     *
+     * @return float|int
+     */
+    public function getVouchersTotalDiscountQuantity()
+    {
+        return array_sum(array_map(function ($v) {
+            return $v->getDiscountQuantity();
+        }, $this->vouchers));
+    }
+
+    /**
      * Get an attribute from the cart item or get the associated model.
      *
      * @param string $attribute
@@ -547,8 +646,10 @@ class CartItem implements Arrayable, Jsonable
                     return round($this->discount * $this->qty, $decimals) + $this->memberDiscountTotal;
                 case 'memberDiscountTotal':
                     return round($this->memberDiscount * $this->qty, $decimals);
+                case 'voucherDiscountTotal':
+                    return $this->getVouchersDiscountAmount();
                 case 'allDiscountTotal':
-                    return $this->discountTotal + $this->memberDiscountTotal;
+                    return $this->discountTotal + $this->memberDiscountTotal + $this->voucherDiscountTotal;
                 case 'priceTotal':
                     return round($this->priceNet * $this->qty, $decimals);
                 case 'subtotal':
@@ -565,7 +666,7 @@ class CartItem implements Arrayable, Jsonable
         } else {
             switch ($attribute) {
                 case 'discount':
-                    return ($this->percentageDiscount) ? ($this->price * ($this->discountRate / 100)) : min($this->price - $this->memberDiscount, $this->discountRate);
+                    return ($this->percentageDiscount) ? (($this->price - $this->memberDiscount) * ($this->discountRate / 100)) : min($this->price - $this->memberDiscount, $this->discountRate);
                 case 'memberDiscount':
                     return ($this->memberPercentageDiscount) ? ($this->price * ($this->memberDiscountRate / 100)) : $this->memberDiscountRate;
                 case 'tax':
@@ -585,10 +686,12 @@ class CartItem implements Arrayable, Jsonable
                     return round($amount, $decimals);
                 case 'memberDiscountTotal':
                     return round($this->memberDiscount * $this->qty, $decimals);
+                case 'voucherDiscountTotal':
+                    return $this->getVouchersDiscountAmount();
                 case 'discountTotal':
                     return round($this->discount * $this->qty, $decimals);
                 case 'allDiscountTotal':
-                    return $this->discountTotal + $this->memberDiscountTotal;
+                    return $this->discountTotal + $this->memberDiscountTotal + $this->voucherDiscountTotal;
                 case 'priceTotal':
                     return round($this->price * $this->qty, $decimals);
                 case 'subtotalWithoutDiscount':
@@ -597,6 +700,8 @@ class CartItem implements Arrayable, Jsonable
                     return max(round($this->priceTotal - $this->allDiscountTotal, $decimals), 0);
                 case 'priceTarget':
                     return max(round(($this->priceTotal - $this->allDiscountTotal) / $this->qty, $decimals), 0);
+                case 'priceMember':
+                    return max($this->price - $this->memberDiscount, 0);
                 case 'total':
                     return round($this->subtotal + $this->taxTotal, $decimals);
                 default:
