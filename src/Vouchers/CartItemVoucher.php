@@ -80,6 +80,11 @@ class CartItemVoucher implements Voucherable
      */
     protected $id;
 
+    /**
+     * @var false|mixed
+     */
+    protected $percentageDiscount;
+
     public function __construct(
         $id,
         $code,
