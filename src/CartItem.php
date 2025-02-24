@@ -416,21 +416,21 @@ class CartItem implements Arrayable, Jsonable
         $this->memberable = null;
     }
 
-    public function applyVoucher(Voucherable $voucher, int $quantity = 1)
+    public function applyVoucher(Voucherable $voucher)
     {
-        $this->vouchers[] = [
-            'voucher' => $voucher,
-            'quantity' => $quantity
-        ];
+        $this->vouchers[] = $voucher;
     }
 
     public function removeVoucher($voucherCode)
     {
-        $this->vouchers = array_filter($this->vouchers, function ($entry) use ($voucherCode) {
-            return $entry['voucher']->getCode() !== $voucherCode;
+        $this->vouchers = array_filter($this->vouchers, function (Voucherable $voucher) use ($voucherCode) {
+            return $voucher->getCode() !== $voucherCode;
         });
     }
 
+    /**
+     * @return array|Voucherable[]
+     */
     public function getVouchers()
     {
         return $this->vouchers;
@@ -532,17 +532,14 @@ class CartItem implements Arrayable, Jsonable
      */
     public function getVouchersDiscountAmount()
     {
-        return array_reduce($this->vouchers, function ($carry, $entry) {
-            $voucher = $entry['voucher'];
-            $quantity = $entry['quantity'];
-
+        return array_reduce($this->vouchers, function ($carry, $voucher) {
             if ($voucher->isPercentage()) {
                 $discountPerItem = $this->priceMember * ($voucher->getDiscountValue() / 100);
             } else {
                 $discountPerItem = $voucher->getDiscountValue();
             }
 
-            return $carry + ($discountPerItem * $quantity);
+            return $carry + ($discountPerItem * $voucher->getDiscountQuantity());
         }, 0);
     }
 
@@ -556,12 +553,12 @@ class CartItem implements Arrayable, Jsonable
     public function getVoucherDiscountAmount($voucherCode)
     {
         foreach ($this->vouchers as $voucher) {
-            if ($entry['voucher']->getCode() === $voucherCode) {
-                if ($entry['voucher']->isPercentage()) {
-                    return $this->priceMember * ($entry['voucher']->getDiscountValue() / 100);
+            if ($voucher->getCode() === $voucherCode) {
+                if ($voucher->isPercentage()) {
+                    return $this->priceMember * ($voucher->getDiscountValue() / 100);
                 }
 
-                return $entry['voucher']->getDiscountValue();
+                return $voucher->getDiscountValue();
             }
         }
 
@@ -575,13 +572,13 @@ class CartItem implements Arrayable, Jsonable
      */
     public function getVoucherTotalDiscountAmount($voucherCode)
     {
-        foreach ($this->vouchers as $entry) {
-            if ($entry['voucher']->getCode() === $voucherCode) {
-                $discountPerItem = $entry['voucher']->isPercentage()
-                    ? $this->priceMember * ($entry['voucher']->getDiscountValue() / 100)
-                    : $entry['voucher']->getDiscountValue();
+        foreach ($this->vouchers as $voucher) {
+            if ($voucher->getCode() === $voucherCode) {
+                $discountPerItem = $voucher->isPercentage()
+                    ? $this->priceMember * ($voucher->getDiscountValue() / 100)
+                    : $voucher->getDiscountValue();
 
-                return $discountPerItem * $entry['quantity'];
+                return $discountPerItem * $voucher->getDiscountQuantity();
             }
         }
 
@@ -595,7 +592,9 @@ class CartItem implements Arrayable, Jsonable
      */
     public function getVouchersTotalDiscountQuantity()
     {
-        return array_sum(array_column($this->vouchers, 'quantity'));
+        return array_sum(array_map(function (Voucherable $v) {
+            return $v->getDiscountQuantity();
+        }, $this->vouchers));
     }
 
     /**

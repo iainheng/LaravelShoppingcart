@@ -14,7 +14,7 @@ interface Voucherable
 {
     /**
      * Get id number of the voucher model
-     * 
+     *
      * @return int
      */
     public function getId();
@@ -46,6 +46,13 @@ interface Voucherable
     public function getDiscountValue();
 
     /**
+     * @return int:float
+     */
+    public function getApplyQuantity();
+
+    /**
+     * Get the real discount quantity applied
+     *
      * @return int|float
      */
     public function getDiscountQuantity();

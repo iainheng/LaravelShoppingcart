@@ -71,6 +71,11 @@ class CartItemVoucher implements Voucherable
     protected $applyQuantity;
 
     /**
+     * @var int|float
+     */
+    protected $discountQuantity;
+
+    /**
      * @var CouponDiscountable
      */
     protected $discountableModel;
@@ -168,16 +173,14 @@ class CartItemVoucher implements Voucherable
                 }
             } else {
                 foreach ($discountableCartItems as $cartItem) {
-                    if (data_get($appliedVariantsQuantity, $cartItem->id, '.appliedQuantity', 0) < $this->getDiscountQuantity()) {
-                        $appliedCartItemArray = $cart->applyVoucherToItem($cartItem->rowId, $this);
+                    if (data_get($appliedVariantsQuantity, $cartItem->id, 0) < $this->getApplyQuantity()) {
+                        $appliedCartItem = $cart->applyVoucherToItem($cartItem->rowId, $this);
 
-                        if ($appliedCartItemArray) {
-                            $appliedVariantsQuantity[$cartItem->id] = ($appliedVariantsQuantity[$cartItem->id] ?? 0) + data_get($appliedCartItemArray,
-                                    'appliedQuantity', 1);
+                        if ($appliedCartItem) {
+                            $appliedVariantsQuantity[$cartItem->id] = ($appliedVariantsQuantity[$cartItem->id] ?? 0) + $this->getDiscountQuantity();
 
-                            $appliedCartItems[] = $appliedCartItemArray;
+                            $appliedCartItems[] = $appliedCartItem;
                         }
-//                    dump('Voucher after quantity: ' . $this->applyQuantity);
                     }
                 }
             }
@@ -371,7 +374,7 @@ class CartItemVoucher implements Voucherable
     /**
      * @inheritDoc
      */
-    public function getDiscountQuantity()
+    public function getApplyQuantity()
     {
         return $this->applyQuantity;
     }
@@ -379,9 +382,17 @@ class CartItemVoucher implements Voucherable
     /**
      * @inheritDoc
      */
+    public function getDiscountQuantity()
+    {
+        return $this->discountQuantity;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function setDiscountQuantity($quantity)
     {
-        $this->applyQuantity = $quantity;
+        $this->discountQuantity = $quantity;
     }
 
     /**

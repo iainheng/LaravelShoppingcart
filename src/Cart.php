@@ -406,7 +406,7 @@ class Cart
     public function allVouchers()
     {
         $cartItemVouchers = $this->items()->map(function (CartItem $cartItem) {
-            return Arr::pluck($cartItem->getVouchers(), 'voucher');
+            return $cartItem->getVouchers();
         })->collapse()->unique(function (Voucherable $voucherable) {
             return $voucherable->getCode();
         })->keyBy(function (Voucherable $voucherable) {
@@ -1657,10 +1657,10 @@ class Cart
      * @param string $rowId
      * @param Voucherable $voucher
      * @param int $quantity
-     * @return ?array       array contains discounted item and discounted qunntity
+     * @return ?CartItem
      * @throws \Exception
      */
-    public function applyVoucherToItem($rowId, Voucherable $voucher): ?array
+    public function applyVoucherToItem($rowId, Voucherable $voucher): ?CartItem
     {
         $item = $this->get($rowId);
         $currentQty = $item->qty;
@@ -1675,18 +1675,19 @@ class Cart
 
         if ($remainingQty > 0) {
             // If the voucher quantity exceeds the remaining quantity, cap it to the remaining quantity
-            $discountQuantity = $voucher->getDiscountQuantity();
+            $discountQuantity = $voucher->getApplyQuantity();
 
             if ($discountQuantity > $remainingQty) {
                 $discountQuantity = $remainingQty;
             }
 
+            $voucher->setDiscountQuantity($discountQuantity);
 
-            $item->applyVoucher($voucher, $discountQuantity);
+            $item->applyVoucher($voucher);
 
             $this->update($rowId, $item->qty);
 
-            return ['item' => $item, 'appliedQuantity' => $discountQuantity];
+            return $item; //['item' => $item, 'appliedQuantity' => $discountQuantity];
         }
 
         return null;
