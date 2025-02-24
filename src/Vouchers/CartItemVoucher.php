@@ -147,6 +147,7 @@ class CartItemVoucher implements Voucherable
         }
 
         $appliedCartItems = [];
+        $appliedVariantsQuantity = [];
 
         if ($discountableCartItems->isNotEmpty()) {
             if (!$this->percentageDiscount && $this->applyOnce) {
@@ -167,7 +168,17 @@ class CartItemVoucher implements Voucherable
                 }
             } else {
                 foreach ($discountableCartItems as $cartItem) {
-                    $appliedCartItems[] = $cart->applyVoucherToItem($cartItem->rowId, $this);
+                    if (data_get($appliedVariantsQuantity, $cartItem->id, '.appliedQuantity', 0) < $this->getDiscountQuantity()) {
+                        $appliedCartItemArray = $cart->applyVoucherToItem($cartItem->rowId, $this);
+
+                        if ($appliedCartItemArray) {
+                            $appliedVariantsQuantity[$cartItem->id] = ($appliedVariantsQuantity[$cartItem->id] ?? 0) + data_get($appliedCartItemArray,
+                                    'appliedQuantity', 1);
+
+                            $appliedCartItems[] = $appliedCartItemArray;
+                        }
+//                    dump('Voucher after quantity: ' . $this->applyQuantity);
+                    }
                 }
             }
         }

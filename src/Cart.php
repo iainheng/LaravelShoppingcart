@@ -19,6 +19,7 @@ use Gloudemans\Shoppingcart\Exceptions\UnknownModelException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Session\SessionManager;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -405,7 +406,7 @@ class Cart
     public function allVouchers()
     {
         $cartItemVouchers = $this->items()->map(function (CartItem $cartItem) {
-            return $cartItem->getVouchers();
+            return Arr::pluck($cartItem->getVouchers(), 'voucher');
         })->collapse()->unique(function (Voucherable $voucherable) {
             return $voucherable->getCode();
         })->keyBy(function (Voucherable $voucherable) {
@@ -1649,15 +1650,17 @@ class Cart
         $this->events->dispatch('cart.member_removed', $member);
     }
 
+
     /**
      * Apply a voucher to cart item
      *
      * @param string $rowId
      * @param Voucherable $voucher
-     * @return CartItem
+     * @param int $quantity
+     * @return ?array       array contains discounted item and discounted qunntity
      * @throws \Exception
      */
-    public function applyVoucherToItem($rowId, Voucherable $voucher)
+    public function applyVoucherToItem($rowId, Voucherable $voucher): ?array
     {
         $item = $this->get($rowId);
         $currentQty = $item->qty;
@@ -1672,18 +1675,21 @@ class Cart
 
         if ($remainingQty > 0) {
             // If the voucher quantity exceeds the remaining quantity, cap it to the remaining quantity
-            if ($voucher->getDiscountQuantity() > $remainingQty) {
-                $voucher->setDiscountQuantity($remainingQty);
+            $discountQuantity = $voucher->getDiscountQuantity();
+
+            if ($discountQuantity > $remainingQty) {
+                $discountQuantity = $remainingQty;
             }
 
-            $item->applyVoucher($voucher);
+
+            $item->applyVoucher($voucher, $discountQuantity);
 
             $this->update($rowId, $item->qty);
 
-            return true;
+            return ['item' => $item, 'appliedQuantity' => $discountQuantity];
         }
 
-        return false;
+        return null;
     }
 
     /**
