@@ -143,4 +143,17 @@ return [
 
         'tax_item_before_discount' => false
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Discount and coupon
+    |--------------------------------------------------------------------------
+    |
+    | Configure coupon behavior and discount application
+    |
+    */
+
+    'member' => [
+        'item_is_discountable_key' => 'is_member_discountable',
+    ],
 ];

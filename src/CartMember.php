@@ -8,7 +8,6 @@ use Gloudemans\Shoppingcart\Exceptions\CouponException;
 use Gloudemans\Shoppingcart\Exceptions\MemberException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
-use Illuminate\Support\Collection;
 
 class CartMember implements Arrayable, Jsonable, Memberable
 {
@@ -64,10 +63,10 @@ class CartMember implements Arrayable, Jsonable, Memberable
         return data_get($this->attributes, 'discount.min_required_amount');
     }
 
-    public function getDiscountProductIdentifies(): Collection
-    {
-        return collect(data_get($this->attributes, 'discount.product_ids', ['*']));
-    }
+//    public function getDiscountProductIdentifies(): Collection
+//    {
+//        return collect(data_get($this->attributes, 'discount.product_ids', ['*']));
+//    }
 
     /**
      * Get list of cart items that are eligible for discount
@@ -77,15 +76,14 @@ class CartMember implements Arrayable, Jsonable, Memberable
      */
     public function getDiscountableCartItems(Cart $cart)
     {
-        $discountableIds = $this->getDiscountProductIdentifies();
+//        $discountableIds = $this->getDiscountProductIdentifies();
+//
+//        // if discountable is keyword * which means we discount every item in cart
+//        if ($discountableIds->count() == 1 && $discountableIds->first() == '*')
+//            return $cart->items();
 
-
-        // if discountable is keyword * which means we discount every item in cart
-        if ($discountableIds->count() == 1 && $discountableIds->first() == '*')
-            return $cart->items();
-
-        return $cart->search(function (CartItem $cartItem) use ($discountableIds) {
-            return in_array($cartItem->id, $discountableIds->all());
+        return $cart->search(function (CartItem $cartItem) {
+            return data_get($cartItem->options, config('cart.member.item_is_discountable_key'), false);
         });
     }
 
