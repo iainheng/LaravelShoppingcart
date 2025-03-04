@@ -92,6 +92,8 @@ class ProductItemCoupon extends CartCoupon
                     // prevent override previous coupon if it was discounted before
                     if (!$cartItem->coupon) {
                         $this->setDiscountOnItem($cartItem);
+
+                        $appliedQuantity++;
                     }
                 }
             }
