@@ -82,7 +82,13 @@ class ProductItemCoupon extends CartCoupon
                     }
                 }
             } else {
+                $appliedQuantity = 0;
+
                 foreach ($discountableCartItems as $cartItem) {
+                    if ($this->applyOnce && $appliedQuantity > 0) {
+                        break;
+                    }
+
                     // prevent override previous coupon if it was discounted before
                     if (!$cartItem->coupon) {
                         $this->setDiscountOnItem($cartItem);
@@ -109,7 +115,7 @@ class ProductItemCoupon extends CartCoupon
 //                $this->removeDiscountOnItem($lowestPriceItem);
 //            } else {
                 foreach ($discountableCartItems as $cartItem) {
-                    if ($cartItem->coupon->code == $this->getCode()) {
+                    if ($cartItem->coupon && $cartItem->coupon->code == $this->getCode()) {
                         $this->removeDiscountOnItem($cartItem);
                     }
                 }

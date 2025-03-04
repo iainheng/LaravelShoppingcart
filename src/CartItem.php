@@ -688,7 +688,7 @@ class CartItem implements Arrayable, Jsonable
                 case 'voucherDiscountTotal':
                     return $this->getVouchersDiscountAmount();
                 case 'discountTotal':
-                    return round($this->discount * $this->qty, $decimals);
+                    return round($this->discount * ($this->discountApplyOnce ? 1 : $this->qty), $decimals);
                 case 'allDiscountTotal':
                     return $this->discountTotal + $this->memberDiscountTotal + $this->voucherDiscountTotal;
                 case 'priceTotal':
