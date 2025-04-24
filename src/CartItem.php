@@ -79,7 +79,7 @@ class CartItem implements Arrayable, Jsonable
     /**
      * The options for this cart item.
      *
-     * @var array
+     * @var CartItemOptions
      */
     public $options;
 
