@@ -53,7 +53,7 @@ class CartMember implements Arrayable, Jsonable, Memberable
         return data_get($this->attributes, 'tier');
     }
 
-    public function getDiscountRate(): float
+    public function getDiscountRate(?CartItem $cartItem = null): float
     {
         return data_get($this->attributes, 'discount.rate');
     }
@@ -104,7 +104,7 @@ class CartMember implements Arrayable, Jsonable, Memberable
 
     public function isPercentageDiscount(): bool
     {
-        return data_get($this->attributes, 'discount.is_percentage', true);
+        return data_get($this->attributes, 'discount.is_discount_percentage', true);
     }
 
     /**
@@ -179,7 +179,7 @@ class CartMember implements Arrayable, Jsonable, Memberable
             } else {
                 foreach ($discountableCartItems as $cartItem) {
 //                    $cartItem->setMemberDiscount($this->getDiscountValue(), $this->isPercentageDiscount());
-                    $cartItem->setMember($this, $this->getDiscountRate(), $this->isPercentageDiscount());
+                    $cartItem->setMember($this, $this->getDiscountRate($cartItem), $this->isPercentageDiscount());
                 }
             }
         }

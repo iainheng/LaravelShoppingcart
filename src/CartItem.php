@@ -416,6 +416,11 @@ class CartItem implements Arrayable, Jsonable
         $this->memberable = null;
     }
 
+    public function getMemberDiscountMode()
+    {
+        return $this->options->get('member_discount_mode');
+    }
+
     public function applyVoucher(Voucherable $voucher)
     {
         $this->vouchers[] = $voucher;
@@ -667,7 +672,13 @@ class CartItem implements Arrayable, Jsonable
                 case 'discount':
                     return ($this->percentageDiscount) ? (($this->price - $this->memberDiscount) * ($this->discountRate / 100)) : min($this->price - $this->memberDiscount, $this->discountRate);
                 case 'memberDiscount':
-                    return ($this->memberPercentageDiscount) ? ($this->price * ($this->memberDiscountRate / 100)) : $this->memberDiscountRate;
+//                    if ($this->getMemberDiscountMode() === 'fixed')
+//                        return $this->price - $this->options->get('price_member2', $this->price);
+                    if ($this->memberPercentageDiscount) {
+                        return ($this->price * ($this->memberDiscountRate / 100));
+                    }
+
+                    return !empty($this->memberable) ? $this->memberable->getDiscountRate($this) : $this->memberDiscountRate;
                 case 'tax':
                     $amount = ($this->taxIncluded) ?
                         calc_tax_amount($this->priceTarget, $this->taxRate, $this->taxIncluded) :
@@ -786,6 +797,7 @@ class CartItem implements Arrayable, Jsonable
             'subtotal' => $this->subtotal,
             'coupon'   => optional($this->coupon)->toArray(),
             'memberDiscount' => $this->memberDiscount,
+            'memberDiscountTotal' => $this->memberDiscountTotal,
             'memberable' => optional($this->memberable)->toArray(),
         ];
     }

@@ -3,6 +3,7 @@
 namespace Gloudemans\Shoppingcart\Contracts;
 
 use Gloudemans\Shoppingcart\Cart;
+use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\Exceptions\MemberException;
 use Illuminate\Support\Collection;
 
@@ -14,7 +15,7 @@ interface Memberable
 
     public function getTier(): string;
 
-    public function getDiscountRate(): float;
+    public function getDiscountRate(?CartItem $cartItem = null): float;
 
     /**
      * Check if member discount is apply to cart or items
@@ -22,8 +23,6 @@ interface Memberable
      * @return bool
      */
     public function isApplyToCart(): bool;
-
-
 
     public function getDescription(): ?string;
 
