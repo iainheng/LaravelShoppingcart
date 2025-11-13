@@ -144,7 +144,7 @@ class BuyXGetYCoupon extends ProductItemCoupon
                     $splitedCartItem->setQuantity($discountPriceQty);
 
                     $splitedCartItem->setDiscount($this->value, $this->percentageDiscount, $this->applyOnce);
-                    $splitedCartItem->setCoupon($this);
+                    $splitedCartItem->setCoupon($this, $requiredCartItems->keys());
                     $splitedCartItem->id = $cartItem->id;
 
                     $cartItem->setQuantity($cartItem->qty - $splitedCartItem->qty);
@@ -152,7 +152,7 @@ class BuyXGetYCoupon extends ProductItemCoupon
                     $discountPriceQty -= $discountPriceQty;
                 } else {
                     $cartItem->setDiscount($this->value, $this->percentageDiscount, $this->applyOnce);
-                    $cartItem->setCoupon($this);
+                    $cartItem->setCoupon($this, $requiredCartItems->keys());
 
                     $discountPriceQty -= $cartItem->qty;
                 }

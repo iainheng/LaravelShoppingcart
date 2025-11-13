@@ -124,6 +124,8 @@ class CartItem implements Arrayable, Jsonable
      */
     private $coupon;
 
+    protected $couponDependsOnItems = [];
+
     protected $vouchers = [];
 
     /**
@@ -346,13 +348,16 @@ class CartItem implements Arrayable, Jsonable
     }
 
     /**
-     * Attach coupon to current item
+     * Attach coupon to current item. Optionally add item's row id if coupon is depends on other items in cart.
+     * This helps to remove the coupon from item when dependant items are removed. It is not used for now and ready for future update when required
      *
      * @param Couponable $coupon
+     * @param array $dependantItems It is not used for now and ready for future update when required
      */
-    public function setCoupon(Couponable $coupon)
+    public function setCoupon(Couponable $coupon, $dependantItems = [])
     {
         $this->coupon = $coupon;
+        $this->couponDependsOnItems = $dependantItems;
     }
 
     /**
