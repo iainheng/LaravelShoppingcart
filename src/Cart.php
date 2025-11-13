@@ -287,7 +287,7 @@ class Cart
      */
     protected function validateCoupons()
     {
-        foreach ($this->coupons() as $coupon) {
+        foreach ($this->allCoupons() as $coupon) {
             try {
                 $coupon->discount($this);
             } catch (CouponException $e) {
