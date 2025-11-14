@@ -294,7 +294,8 @@ class BuyXGetYCoupon extends ProductItemCoupon
     {
         $data = parent::toArray();
 
-        $data['discountable'] = $this->discountable;
+        $data['discountable'] = $this->discountable && method_exists($this->discountable, 'attributesToArray') ?
+            $this->discountable->attributesToArray() : $this->discountable;
         $data['apply_once'] = $this->applyOnce;
 
         return $data;
