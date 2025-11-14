@@ -4,12 +4,9 @@ namespace Gloudemans\Shoppingcart\Coupons;
 
 use Carbon\Carbon;
 use Gloudemans\Shoppingcart\Cart;
-use Gloudemans\Shoppingcart\CartCoupon;
 use Gloudemans\Shoppingcart\CartItem;
 use Gloudemans\Shoppingcart\Contracts\BuyXGetYCouponDiscountable;
-use Gloudemans\Shoppingcart\Contracts\CouponDiscountable;
 use Gloudemans\Shoppingcart\Exceptions\CouponException;
-use Gloudemans\Shoppingcart\Traits\ItemCouponTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -265,24 +262,6 @@ class BuyXGetYCoupon extends ProductItemCoupon
         }
 
         return ($this->percentageDiscount) ? $amount * $this->getDiscountValue() : $this->getDiscountValue();
-    }
-
-    /**
-     * Gets the discount amount.
-     *
-     * @param Cart $cart
-     * @param $throwErrors boolean this allows us to capture errors in our code if we wish,
-     * that way we can spit out why the coupon has failed
-     *
-     * @return float
-     */
-    public function discount(Cart $cart, $throwErrors = true)
-    {
-        parent::discount($cart, $throwErrors);
-
-        return $cart->items()->reduce(function ($total, CartItem $cartItem) {
-            return $total + $cartItem->discountTotal;
-        }, 0);
     }
 
     /**
