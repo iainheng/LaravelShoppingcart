@@ -1650,6 +1650,14 @@ class Cart
         $this->events->dispatch('cart.member_removed', $member);
     }
 
+    // protected function getVoucherDiscountedQuantity(Voucherable $voucher)
+    // {
+    //     return $this->allVouchers()->filter(function (CartItemVoucher $v) use ($voucher) {
+    //         return $v->code === $voucher->code;
+    //     })->sum(function ($v) {
+    //         return $v->getDiscountQuantity();
+    //     });
+    // }
 
     /**
      * Apply a voucher to cart item
