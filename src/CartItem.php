@@ -128,6 +128,8 @@ class CartItem implements Arrayable, Jsonable
 
     protected $vouchers = [];
 
+    protected $vouchersDiscountQuantity = [];
+
     /**
      * @var Memberable
      */
@@ -426,9 +428,10 @@ class CartItem implements Arrayable, Jsonable
         return $this->options->get('member_discount_mode');
     }
 
-    public function applyVoucher(Voucherable $voucher)
+    public function applyVoucher(Voucherable $voucher, $discountQuantity = 1)
     {
         $this->vouchers[] = $voucher;
+        $this->vouchersDiscountQuantity[$voucher->getCode()] = $discountQuantity;
     }
 
     public function removeVoucher($voucherCode)
@@ -549,7 +552,7 @@ class CartItem implements Arrayable, Jsonable
                 $discountPerItem = $voucher->getDiscountValue();
             }
 
-            return $carry + ($discountPerItem * $voucher->getDiscountQuantity());
+            return $carry + ($discountPerItem * $this->vouchersDiscountQuantity[$voucher->getCode()] ?? 0);
         }, 0);
     }
 
@@ -603,7 +606,7 @@ class CartItem implements Arrayable, Jsonable
     public function getVouchersTotalDiscountQuantity()
     {
         return array_sum(array_map(function (Voucherable $v) {
-            return $v->getDiscountQuantity();
+            return $this->vouchersDiscountQuantity[$v->getCode()] ?? 0;
         }, $this->vouchers));
     }
 

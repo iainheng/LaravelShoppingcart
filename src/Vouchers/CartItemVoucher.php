@@ -176,10 +176,11 @@ class CartItemVoucher implements Voucherable
                     $totalAppliedVariantsQuanttity = collect($appliedVariantsQuantity)->sum();
 
                     if ($totalAppliedVariantsQuanttity < $this->getApplyQuantity()) {
+                        // dump($cartItem->name);
                         $appliedCartItem = $cart->applyVoucherToItem($cartItem->rowId, $this);
-
+                        
                         if ($appliedCartItem) {
-                            $appliedVariantsQuantity[$cartItem->id] = ($appliedVariantsQuantity[$cartItem->id] ?? 0) + $this->getDiscountQuantity();
+                            $appliedVariantsQuantity[$cartItem->id] = ($appliedVariantsQuantity[$cartItem->id] ?? 0) + $appliedCartItem->getVouchersTotalDiscountQuantity();
 
                             $appliedCartItems[] = $appliedCartItem;
                         }

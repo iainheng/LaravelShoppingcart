@@ -1691,7 +1691,7 @@ class Cart
 
             $voucher->setDiscountQuantity($discountQuantity);
 
-            $item->applyVoucher($voucher);
+            $item->applyVoucher($voucher, $discountQuantity);
 
             $this->update($rowId, $item->qty);
 
